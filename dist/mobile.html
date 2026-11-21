@@ -68,6 +68,29 @@
   .empty { padding: 18px; text-align: center; color: var(--sub); font-size: 13px; }
   .dots { color: var(--sub); font-size: 13px; padding: 2px; }
   .hide { display: none !important; }
+  /* 设置面板（底部弹出，替代桌面版设置页） */
+  .mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.38); z-index: 50;
+    opacity: 0; transition: opacity .18s ease;
+  }
+  .mask.on { opacity: 1; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 51;
+    background: var(--card); border-radius: 18px 18px 0 0;
+    padding: 8px 16px calc(18px + env(safe-area-inset-bottom));
+    transform: translateY(102%); transition: transform .22s cubic-bezier(.22,.61,.36,1);
+    border-top: 1px solid var(--border);
+  }
+  .sheet.on { transform: translateY(0); }
+  .grip { width: 38px; height: 4px; border-radius: 2px; background: var(--border); margin: 4px auto 12px; }
+  .srow { display: flex; align-items: center; justify-content: space-between; padding: 13px 2px; font-size: 15px; }
+  .srow + .srow { border-top: 1px solid var(--border); }
+  .srow .val { color: var(--sub); font-size: 13px; }
+  .seg { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg div { padding: 6px 14px; font-size: 13px; color: var(--sub); cursor: pointer; }
+  .seg div.on { background: var(--accent); color: #fff; font-weight: 600; }
+  .sdanger { color: var(--danger); }
+  .snote { font-size: 12px; color: var(--sub); line-height: 1.6; padding: 12px 2px 2px; }
 </style>
 </head>
 <body>
@@ -95,6 +118,22 @@
   <div class="sec" id="sec-his">
     <div class="sec-h"><b>最近历史</b></div>
     <div class="card" id="history"></div>
+  </div>
+
+
+  <div class="mask hide" id="sheet-mask"></div>
+  <div class="sheet hide" id="sheet">
+    <div class="grip"></div>
+    <div class="srow">
+      <span>外观</span>
+      <div class="seg" id="seg-theme">
+        <div data-theme="light">浅色</div>
+        <div data-theme="dark">深色</div>
+      </div>
+    </div>
+    <div class="srow"><span>版本</span><span class="val" id="s-ver">—</span></div>
+    <div class="srow" id="s-clear"><span class="sdanger">清空浏览历史</span><span class="val">不可恢复</span></div>
+    <div class="snote">移动端为单窗口浏览架构：标签页只记录网址与标题，切换标签会重新加载页面。返回上一页用网页顶部的 ‹ 按钮。</div>
   </div>
 
 <script>
@@ -196,9 +235,52 @@
     }).catch(function (e) { alert(String(e)); });
   });
 
-  // ---- 设置入口 ----
-  $('btn-settings').addEventListener('click', function () {
-    invoke && invoke('mob_open', { input: 'trawl://settings', newTab: false }).catch(function () {});
+  // ---- 设置面板 ----
+  var sheetOpen = false;
+  function paintTheme() {
+    var t = (settings && settings.theme) === 'dark' ? 'dark' : 'light';
+    var seg = $('seg-theme');
+    for (var i = 0; i < seg.children.length; i++) {
+      seg.children[i].classList.toggle('on', seg.children[i].getAttribute('data-theme') === t);
+    }
+  }
+  function openSheet() {
+    sheetOpen = true;
+    $('sheet-mask').classList.remove('hide');
+    $('sheet').classList.remove('hide');
+    paintTheme();
+    requestAnimationFrame(function () {
+      $('sheet-mask').classList.add('on');
+      $('sheet').classList.add('on');
+    });
+    invoke && invoke('get_version').then(function (v) { $('s-ver').textContent = 'v' + v; }).catch(function () {});
+  }
+  function closeSheet() {
+    sheetOpen = false;
+    $('sheet-mask').classList.remove('on');
+    $('sheet').classList.remove('on');
+    setTimeout(function () {
+      if (sheetOpen) return;
+      $('sheet-mask').classList.add('hide');
+      $('sheet').classList.add('hide');
+    }, 220);
+  }
+  $('btn-settings').addEventListener('click', openSheet);
+  $('sheet-mask').addEventListener('click', closeSheet);
+  $('seg-theme').addEventListener('click', function (ev) {
+    var t = ev.target.getAttribute && ev.target.getAttribute('data-theme');
+    if (!t || !settings) return;
+    settings.theme = t;
+    applyTheme(t);
+    paintTheme();
+    invoke && invoke('save_settings', { settings: settings }).catch(function () {});
+  });
+  $('s-clear').addEventListener('click', function () {
+    if (!invoke || !confirm('清空全部浏览历史？')) return;
+    invoke('clear_history').then(function () {
+      loadHistory();
+      closeSheet();
+    }).catch(function () {});
   });
 
   // ---- 书签/历史点击 ----

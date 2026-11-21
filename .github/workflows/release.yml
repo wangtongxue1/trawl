@@ -15,12 +15,12 @@ name: Release Trawl
 #   - 构建失败时把日志尾部输出成 ::error:: 注解（run 页面直接可见）
 #   - 上传统一走 gh CLI，避免第三方 action 的权限兼容问题
 
+# 仅标签/手动触发：main 推送由 ci.yml 做检查，避免双跑 Release 并发抢
+# 同一个草稿 Release / Maven 限流（曾导致 macOS 上传竞态、Android gradle 429）
 on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       build_ios:

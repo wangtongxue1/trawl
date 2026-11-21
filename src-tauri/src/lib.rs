@@ -3977,9 +3977,14 @@ fn get_version(app: AppHandle) -> String {
 /// 打开系统邮件客户端发送反馈
 #[tauri::command]
 fn open_feedback() {
-    let _ = std::process::Command::new("cmd")
-        .args(["/c", "start", "", "mailto:feedback@trawlbrowser.com?subject=Trawl%20%E5%8F%8D%E9%A6%88"])
-        .spawn();
+    let url = "mailto:feedback@trawlbrowser.com?subject=Trawl%20%E5%8F%8D%E9%A6%88";
+    #[cfg(windows)]
+    let _ = std::process::Command::new("cmd").args(["/c", "start", "", url]).spawn();
+    #[cfg(not(windows))]
+    {
+        let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        let _ = std::process::Command::new(opener).arg(url).spawn();
+    }
 }
 
 /// 退出整个应用（菜单「退出」）
@@ -3989,6 +3994,7 @@ fn exit_app(app: AppHandle) {
 }
 
 /// 全窗口截图（含浏览器界面），保存 PNG 到「图片\Trawl截图」，返回文件路径
+#[cfg(windows)]
 #[tauri::command]
 fn capture_screen(app: AppHandle) -> Result<String, String> {
     use windows::Win32::Graphics::Gdi::{
@@ -4121,6 +4127,13 @@ fn clear_browsing_data(
     result
 }
 
+/// 截图存根：非 Windows 平台暂不支持（GDI+ 截图逻辑依赖 Win32 API）
+#[cfg(not(windows))]
+#[tauri::command]
+fn capture_screen(_app: AppHandle) -> Result<String, String> {
+    Err("截图功能目前仅支持 Windows 版".to_string())
+}
+
 /// 在资源管理器里定位下载文件
 #[tauri::command]
 fn reveal_download(path: String) {
@@ -4203,9 +4216,14 @@ const HOTKEYS: [(i32, u32, u32); 17] = [
     (17, MOD_CTRL_SHIFT_NR, 0x09),  // VK_TAB       Ctrl+Shift+Tab 上一个标签
 ];
 
+/// 非 Windows 平台：热键依赖 Win32 RegisterHotKey，暂不提供
+#[cfg(not(windows))]
+fn set_hotkeys_enabled(_enabled: bool) {}
+
 /// 只在主窗口获得焦点时注册热键。
 /// RegisterHotKey 是**系统级**抢占：老版本不问焦点就注册 Ctrl+T/F/L…，
 /// 结果用户在 Word、VS Code 里按 Ctrl+F 会弹 Trawl 的查找条，这是最招人恨的缺陷。
+#[cfg(windows)]
 fn set_hotkeys_enabled(enabled: bool) {
     let tid = HOTKEY_TID.load(Ordering::Relaxed);
     if tid == 0 {
@@ -4223,8 +4241,13 @@ fn set_hotkeys_enabled(enabled: bool) {
     }
 }
 
+/// 非 Windows 平台：全局热键暂不提供
+#[cfg(not(windows))]
+fn start_global_hotkeys(_app: AppHandle) {}
+
 /// 全局热键线程：独立消息循环，不依赖任何 webview 是否有焦点
 /// （webview 内部按键不会冒泡到宿主窗口，这是 Tauri 多 webview 架构的硬限制）
+#[cfg(windows)]
 fn start_global_hotkeys(app: AppHandle) {
     use windows::Win32::System::Threading::GetCurrentThreadId;
     use windows::Win32::UI::Input::KeyboardAndMouse::{

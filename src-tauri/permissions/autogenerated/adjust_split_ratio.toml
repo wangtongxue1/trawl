@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-adjust-split-ratio"
+description = "Enables the adjust_split_ratio command without any pre-configured scope."
+commands.allow = ["adjust_split_ratio"]
+
+[[permission]]
+identifier = "deny-adjust-split-ratio"
+description = "Denies the adjust_split_ratio command without any pre-configured scope."
+commands.deny = ["adjust_split_ratio"]

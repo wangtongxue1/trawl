@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-group-tabs"
+description = "Enables the close_group_tabs command without any pre-configured scope."
+commands.allow = ["close_group_tabs"]
+
+[[permission]]
+identifier = "deny-close-group-tabs"
+description = "Denies the close_group_tabs command without any pre-configured scope."
+commands.deny = ["close_group_tabs"]

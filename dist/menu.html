@@ -265,7 +265,7 @@ async function build() {
       fn: async () => {
         let v = '';
         try { v = await invoke('get_version'); } catch {}
-        toast('Trawl 元搜浏览器 v' + (v || '0.7.15') + ' · 把浏览器做薄，把搜索做快');
+        toast('Trawl 元搜浏览器 v' + (v || '0.7.16') + ' · 把浏览器做薄，把搜索做快');
       } },
     { sep: true },
     { label: '退出', key: 'Alt+F4', icon: 'i-exit', fn: () => runLocal('exit_app') },

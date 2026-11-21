@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mob-state"
+description = "Enables the mob_state command without any pre-configured scope."
+commands.allow = ["mob_state"]
+
+[[permission]]
+identifier = "deny-mob-state"
+description = "Denies the mob_state command without any pre-configured scope."
+commands.deny = ["mob_state"]

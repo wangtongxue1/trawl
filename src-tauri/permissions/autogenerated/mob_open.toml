@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mob-open"
+description = "Enables the mob_open command without any pre-configured scope."
+commands.allow = ["mob_open"]
+
+[[permission]]
+identifier = "deny-mob-open"
+description = "Denies the mob_open command without any pre-configured scope."
+commands.deny = ["mob_open"]

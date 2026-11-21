@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-toggle-split"
+description = "Enables the toggle_split command without any pre-configured scope."
+commands.allow = ["toggle_split"]
+
+[[permission]]
+identifier = "deny-toggle-split"
+description = "Denies the toggle_split command without any pre-configured scope."
+commands.deny = ["toggle_split"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-glance"
+description = "Enables the close_glance command without any pre-configured scope."
+commands.allow = ["close_glance"]
+
+[[permission]]
+identifier = "deny-close-glance"
+description = "Denies the close_glance command without any pre-configured scope."
+commands.deny = ["close_glance"]

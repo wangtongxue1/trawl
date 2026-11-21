@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-toggle-vertical-tabs"
+description = "Enables the toggle_vertical_tabs command without any pre-configured scope."
+commands.allow = ["toggle_vertical_tabs"]
+
+[[permission]]
+identifier = "deny-toggle-vertical-tabs"
+description = "Denies the toggle_vertical_tabs command without any pre-configured scope."
+commands.deny = ["toggle_vertical_tabs"]

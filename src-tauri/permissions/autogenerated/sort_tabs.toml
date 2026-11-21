@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sort-tabs"
+description = "Enables the sort_tabs command without any pre-configured scope."
+commands.allow = ["sort_tabs"]
+
+[[permission]]
+identifier = "deny-sort-tabs"
+description = "Denies the sort_tabs command without any pre-configured scope."
+commands.deny = ["sort_tabs"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pw-del"
+description = "Enables the pw_del command without any pre-configured scope."
+commands.allow = ["pw_del"]
+
+[[permission]]
+identifier = "deny-pw-del"
+description = "Denies the pw_del command without any pre-configured scope."
+commands.deny = ["pw_del"]

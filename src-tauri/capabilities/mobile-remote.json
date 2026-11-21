@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "mobile-remote",
+  "description": "移动端：外部网页注入浮层的页面信息上报",
+  "windows": [
+    "main"
+  ],
+  "webviews": [
+    "main"
+  ],
+  "platforms": [
+    "android",
+    "iOS"
+  ],
+  "remote": {
+    "urls": [
+      "https://*",
+      "http://*"
+    ]
+  },
+  "permissions": [
+    "allow-mob-report"
+  ]
+}

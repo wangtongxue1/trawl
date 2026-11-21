@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-new-workspace"
+description = "Enables the new_workspace command without any pre-configured scope."
+commands.allow = ["new_workspace"]
+
+[[permission]]
+identifier = "deny-new-workspace"
+description = "Denies the new_workspace command without any pre-configured scope."
+commands.deny = ["new_workspace"]

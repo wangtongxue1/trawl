@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-brandpanel"
+description = "Enables the open_brandpanel command without any pre-configured scope."
+commands.allow = ["open_brandpanel"]
+
+[[permission]]
+identifier = "deny-open-brandpanel"
+description = "Denies the open_brandpanel command without any pre-configured scope."
+commands.deny = ["open_brandpanel"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-zoom-page"
+description = "Enables the zoom_page command without any pre-configured scope."
+commands.allow = ["zoom_page"]
+
+[[permission]]
+identifier = "deny-zoom-page"
+description = "Denies the zoom_page command without any pre-configured scope."
+commands.deny = ["zoom_page"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mob-home"
+description = "Enables the mob_home command without any pre-configured scope."
+commands.allow = ["mob_home"]
+
+[[permission]]
+identifier = "deny-mob-home"
+description = "Denies the mob_home command without any pre-configured scope."
+commands.deny = ["mob_home"]

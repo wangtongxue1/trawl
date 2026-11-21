@@ -456,6 +456,10 @@ struct AppState {
     /// 新建的标签 webview 要等这个标记才显示——否则会先闪一帧
     /// WebView2 默认底色（黑屏闪烁的来源），再被页面内容覆盖。
     ready_webviews: Mutex<std::collections::HashSet<String>>,
+    /// 移动端：打开的标签元信息（url/title），页面状态不保留（单 webview 架构）
+    mob_tabs: Mutex<Vec<MobTab>>,
+    /// 移动端：当前激活标签 id
+    mob_active: Mutex<Option<String>>,
 }
 
 /// 一个本地扩展解析出的可注入脚本
@@ -489,6 +493,8 @@ impl Default for AppState {
             reader_tabs: Mutex::new(HashMap::new()),
             ext_scripts: Mutex::new(Vec::new()),
             ready_webviews: Mutex::new(std::collections::HashSet::new()),
+            mob_tabs: Mutex::new(Vec::new()),
+            mob_active: Mutex::new(None),
         }
     }
 }
@@ -511,6 +517,12 @@ fn now_ts() -> u64 {
 }
 
 fn data_root() -> PathBuf {
+    // 移动端：setup 时把应用私有目录写进 MOB_DATA_ROOT（USERPROFILE 在 Android 不存在）
+    #[cfg(mobile)]
+    if let Some(p) = MOB_DATA_ROOT.get() {
+        let _ = std::fs::create_dir_all(p);
+        return p.clone();
+    }
     let base = std::env::var("USERPROFILE")
         .map(|h| PathBuf::from(h).join("AppData").join("LocalLow").join("Trawl"))
         .unwrap_or_else(|_| std::env::temp_dir().join("com.trawl.browser"));
@@ -591,6 +603,7 @@ fn resolve_input(input: &str, settings: &Settings) -> String {
     }
 }
 
+#[cfg(desktop)]
 fn content_bounds(state: &AppState) -> tauri::Rect {
     let (x, y, w, h) = *state.layout.lock().unwrap();
     tauri::Rect {
@@ -831,6 +844,7 @@ fn load_json_list<T: for<'de> Deserialize<'de>>(file: &str) -> Option<Vec<T>> {
 // ==================== 核心逻辑 ====================
 
 /// 计算某个标签页当前的显示区域：分屏时按比例取半幅，否则全幅
+#[cfg(desktop)]
 fn bounds_for_tab(state: &AppState, tab_id: &str, active: &Option<String>) -> tauri::Rect {
     let (x, y, w, h) = *state.layout.lock().unwrap();
     let split = state.split.lock().unwrap().clone();
@@ -881,6 +895,7 @@ fn debug_msg(msg: String) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn emit_shortcut(app: AppHandle, what: String) {
     // 同步命令跑在主线程，直接 emit_to（内部走 eval）会静默丢事件，
     // 必须丢到工作线程发送（与 push_state 的队列线程同理）
@@ -952,6 +967,7 @@ static CREATOR: std::sync::OnceLock<std::sync::mpsc::Sender<CreatorJob>> =
     std::sync::OnceLock::new();
 
 /// 启动创建线程（在 setup 里调用一次）
+#[cfg(desktop)]
 fn start_creator(app: AppHandle) {
     let (tx, rx) = std::sync::mpsc::channel::<CreatorJob>();
     let _ = CREATOR.set(tx);
@@ -986,6 +1002,7 @@ where
 /// 真正创建某个标签页的 webview。
 /// 标签页现在是「懒创建」：会话恢复时只建数据，等第一次显示才建 webview，
 /// 否则 30 个标签页 = 30 个 webview 同时抢 CPU 加载，启动会卡死。
+#[cfg(desktop)]
 fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String> {
     if app.get_webview(id).is_some() {
         return Ok(());
@@ -1168,11 +1185,13 @@ fn want_visible(state: &AppState) -> Vec<String> {
     want
 }
 
+#[cfg(desktop)]
 fn missing_webview(app: &AppHandle, state: &AppState) -> bool {
     want_visible(state).iter().any(|id| app.get_webview(id).is_none())
 }
 
 /// 补建缺失的 webview。**只能在非主线程调用**。
+#[cfg(desktop)]
 fn spawn_missing_webviews(app: &AppHandle, state: &AppState) -> bool {
     let mut created = false;
     for id in want_visible(state) {
@@ -1201,6 +1220,7 @@ fn spawn_missing_webviews(app: &AppHandle, state: &AppState) -> bool {
 /// 铁律：`Window::add_child` 内部是 run_on_main_thread + rx.recv() 阻塞等待，
 /// 所以在**主线程**里调用它必然自己等自己 → 整个窗口假死（表现为 Responding=False）。
 /// 因此补建 webview 必须放到工作线程，主线程只负责投递。
+#[cfg(desktop)]
 fn refresh_view(app: &AppHandle) {
     spawn_create(app, |app| {
         let st = app.state::<AppState>();
@@ -1210,6 +1230,7 @@ fn refresh_view(app: &AppHandle) {
 }
 
 /// 纯定位：不动 webview 的创建，主线程可以放心调用（如窗口 resize、layout 上报）
+#[cfg(desktop)]
 fn show_active_tab(app: &AppHandle, state: &AppState) {
     let active = state.active_tab.lock().unwrap().clone();
     let active_ws = state.active_workspace.lock().unwrap().clone();
@@ -1261,6 +1282,7 @@ fn show_active_tab(app: &AppHandle, state: &AppState) {
     }
 }
 
+#[cfg(desktop)]
 fn create_tab(
     app: &AppHandle,
     state: &AppState,
@@ -1300,6 +1322,7 @@ fn create_tab(
     Ok(id)
 }
 
+#[cfg(desktop)]
 fn close_tab(app: &AppHandle, id: &str) {
     let state = app.state::<AppState>();
     // 关标签后的继任者由设置决定：右侧 / 左侧 / 新标签页
@@ -1363,6 +1386,7 @@ fn close_tab(app: &AppHandle, id: &str) {
     push_state(app);
 }
 
+#[cfg(desktop)]
 fn switch_workspace(app: &AppHandle, id: &str) {
     let state = app.state::<AppState>();
     if !state.workspaces.lock().unwrap().iter().any(|w| w.id == id) {
@@ -1401,6 +1425,7 @@ fn initial_state(state: State<'_, AppState>) -> StatePayload {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn new_tab(app: AppHandle) {
     let state = app.state::<AppState>();
     let ws = state.active_workspace.lock().unwrap().clone();
@@ -1445,12 +1470,14 @@ const PAGE_BRIDGE: &str = r#"
 "#;
 
 #[tauri::command]
+#[cfg(desktop)]
 fn page_pressed(app: AppHandle) {
     let _ = app.emit_to(CHROME_LABEL, "page-pressed", ());
 }
 
 /// 打开内置页面（settings / extensions 等）为新标签页
 #[tauri::command]
+#[cfg(desktop)]
 fn open_internal(app: AppHandle, page: String) {
     let state = app.state::<AppState>();
     let ws = state.active_workspace.lock().unwrap().clone();
@@ -1461,6 +1488,7 @@ fn open_internal(app: AppHandle, page: String) {
 // ---- 批量操作 ----
 
 #[tauri::command]
+#[cfg(desktop)]
 fn close_tabs(app: AppHandle, ids: Vec<String>) {
     for id in ids {
         close_tab(&app, &id);
@@ -1471,6 +1499,7 @@ fn close_tabs(app: AppHandle, ids: Vec<String>) {
 /// 老实现循环调用 close_tab，每关掉一个活动标签就自动补一个 HOME_URL（元宝搜索），
 /// 面板自己又 open_internal 开一个，于是出现「元宝搜索 + 新标签页」两个标签。
 #[tauri::command]
+#[cfg(desktop)]
 fn close_all_tabs_and_newtab(app: AppHandle) {
     let state = app.state::<AppState>();
     let ws = state.active_workspace.lock().unwrap().clone();
@@ -1493,6 +1522,7 @@ fn close_all_tabs_and_newtab(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn set_pins(app: AppHandle, ids: Vec<String>, pinned: bool) {
     let state = app.state::<AppState>();
     for t in state.tabs.lock().unwrap().iter_mut() {
@@ -1505,6 +1535,7 @@ fn set_pins(app: AppHandle, ids: Vec<String>, pinned: bool) {
 
 /// 关闭其他标签页：保留指定标签，清掉同工作区的其余标签（不自动补新页）
 #[tauri::command]
+#[cfg(desktop)]
 fn close_other_tabs(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     let ws = state.active_workspace.lock().unwrap().clone();
@@ -1532,6 +1563,7 @@ fn close_other_tabs(app: AppHandle, id: String) {
 
 /// 复制标签页：在原标签右侧开一个同地址的新标签
 #[tauri::command]
+#[cfg(desktop)]
 fn duplicate_tab(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     let found = state
@@ -1560,6 +1592,7 @@ fn duplicate_tab(app: AppHandle, id: String) {
 
 /// 分屏比例调节（delta 正负 0.05），返回是否生效
 #[tauri::command]
+#[cfg(desktop)]
 fn adjust_split_ratio(app: AppHandle, delta: f64) {
     let state = app.state::<AppState>();
     {
@@ -1570,6 +1603,7 @@ fn adjust_split_ratio(app: AppHandle, delta: f64) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn activate_tab(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     *state.active_tab.lock().unwrap() = Some(id);
@@ -1579,6 +1613,7 @@ fn activate_tab(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn close_tab_cmd(app: AppHandle, id: String) {
     close_tab(&app, &id);
 }
@@ -1604,6 +1639,7 @@ fn move_tab(app: AppHandle, id: String, beforeId: Option<String>, pinned: bool) 
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn toggle_pin(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     let mut tabs = state.tabs.lock().unwrap();
@@ -1649,6 +1685,7 @@ fn create_folder(app: AppHandle, name: String, workspaceId: Option<String>) -> S
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn delete_folder(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     state.folders.lock().unwrap().retain(|f| f.id != id);
@@ -1661,6 +1698,7 @@ fn delete_folder(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn rename_folder(app: AppHandle, id: String, name: String) {
     let state = app.state::<AppState>();
     if let Some(f) = state.folders.lock().unwrap().iter_mut().find(|f| f.id == id) {
@@ -1685,11 +1723,13 @@ fn move_tab_to_folder(app: AppHandle, id: String, folderId: Option<String>) {
 // ---- Glance ----
 
 #[tauri::command]
+#[cfg(desktop)]
 fn open_glance(app: AppHandle, id: Option<String>, url: Option<String>) {
     // add_child 必须离开主线程，见 spawn_create 的注释
     spawn_create(&app, move |app| open_glance_inner(app, id, url));
 }
 
+#[cfg(desktop)]
 fn open_glance_inner(app: &AppHandle, id: Option<String>, url: Option<String>) {
     let state = app.state::<AppState>();
     let target = match (&id, &url) {
@@ -1745,6 +1785,7 @@ fn open_glance_inner(app: &AppHandle, id: Option<String>, url: Option<String>) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn close_glance(app: AppHandle) {
     let state = app.state::<AppState>();
     let label = state.glance.lock().unwrap().take();
@@ -1757,6 +1798,7 @@ fn close_glance(app: AppHandle) {
 
 /// 把当前 Glance 转为正式标签页
 #[tauri::command]
+#[cfg(desktop)]
 fn promote_glance(app: AppHandle) {
     let state = app.state::<AppState>();
     let label = state.glance.lock().unwrap().take();
@@ -1774,6 +1816,7 @@ fn promote_glance(app: AppHandle) {
 // ---- 分屏 ----
 
 #[tauri::command]
+#[cfg(desktop)]
 fn toggle_split(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     let active = state.active_tab.lock().unwrap().clone();
@@ -1794,6 +1837,7 @@ fn toggle_split(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn exit_split(app: AppHandle) {
     let state = app.state::<AppState>();
     *state.split.lock().unwrap() = None;
@@ -1803,6 +1847,7 @@ fn exit_split(app: AppHandle) {
 
 /// 分屏方向切换：左右 ↔ 上下
 #[tauri::command]
+#[cfg(desktop)]
 fn toggle_split_orientation(app: AppHandle) {
     let state = app.state::<AppState>();
     *state.split_vertical.lock().unwrap() = !*state.split_vertical.lock().unwrap();
@@ -1855,6 +1900,7 @@ fn clear_history(app: AppHandle) {
 // ---- 页内查找 ----
 
 #[tauri::command]
+#[cfg(desktop)]
 fn find_in_page(app: AppHandle, text: String) {
     let state = app.state::<AppState>();
     let active = state.active_tab.lock().unwrap().clone();
@@ -1869,6 +1915,7 @@ fn find_in_page(app: AppHandle, text: String) {
 // ---- 工作区 ----
 
 #[tauri::command]
+#[cfg(desktop)]
 fn new_workspace(app: AppHandle) {
     let state = app.state::<AppState>();
     let id = gen_id("ws");
@@ -1882,11 +1929,13 @@ fn new_workspace(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn switch_workspace_cmd(app: AppHandle, id: String) {
     switch_workspace(&app, &id);
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn close_workspace(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     if state.workspaces.lock().unwrap().len() <= 1 {
@@ -1942,6 +1991,7 @@ fn close_workspace(app: AppHandle, id: String) {
 
 /// 关闭分组：关掉该组内所有标签页，但保留分组本身（组里留一个空白新标签页）
 #[tauri::command]
+#[cfg(desktop)]
 fn close_group_tabs(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     let tab_ids: Vec<String> = state
@@ -1966,6 +2016,7 @@ fn close_group_tabs(app: AppHandle, id: String) {
 
 /// 重命名工作区（标签分组面板顶部的「为分组命名」）
 #[tauri::command]
+#[cfg(desktop)]
 fn rename_workspace(app: AppHandle, id: String, name: String) {
     let state = app.state::<AppState>();
     let name = name.trim().to_string();
@@ -1985,6 +2036,7 @@ fn rename_workspace(app: AppHandle, id: String, name: String) {
 /// 取消分组：保留组内标签，把它们并入另一个工作区后删掉当前分组。
 /// 与「删除分组」(close_workspace) 的区别是后者会把组内标签一起关掉。
 #[tauri::command]
+#[cfg(desktop)]
 fn ungroup_workspace(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     let target = {
@@ -2013,6 +2065,7 @@ fn ungroup_workspace(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn navigate(app: AppHandle, input: String) {
     let state = app.state::<AppState>();
     let settings = state.settings.lock().unwrap().clone();
@@ -2053,6 +2106,7 @@ fn navigate(app: AppHandle, input: String) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn nav_back(app: AppHandle) {
     let state = app.state::<AppState>();
     let active = state.active_tab.lock().unwrap().clone();
@@ -2064,6 +2118,7 @@ fn nav_back(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn nav_forward(app: AppHandle) {
     let state = app.state::<AppState>();
     let active = state.active_tab.lock().unwrap().clone();
@@ -2075,6 +2130,7 @@ fn nav_forward(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn stop_loading(app: AppHandle) {
     let state = app.state::<AppState>();
     let active = state.active_tab.lock().unwrap().clone();
@@ -2086,6 +2142,7 @@ fn stop_loading(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn nav_reload(app: AppHandle) {
     let state = app.state::<AppState>();
     let active = state.active_tab.lock().unwrap().clone();
@@ -2097,6 +2154,7 @@ fn nav_reload(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn layout(app: AppHandle, x: f64, y: f64, width: f64, height: f64) {
     let state = app.state::<AppState>();
     *state.layout.lock().unwrap() = (x, y, width, height);
@@ -2150,6 +2208,7 @@ fn reset_settings(app: AppHandle) -> Settings {
 
 /// 开机自启：直接写 HKCU 的 Run 项，不额外引第三方插件
 #[tauri::command]
+#[cfg(desktop)]
 fn set_autostart(app: AppHandle, enable: bool) {
     let exe = std::env::current_exe()
         .map(|p| p.display().to_string())
@@ -2190,6 +2249,7 @@ fn set_autostart(app: AppHandle, enable: bool) {
 
 /// 打开 Windows「默认应用」设置页，方便把 Trawl 设为默认浏览器
 #[tauri::command]
+#[cfg(desktop)]
 fn open_default_apps() {
     #[cfg(windows)]
     {
@@ -2243,6 +2303,7 @@ const READER_JS: &str = r#"(() => {
 
 /// 关闭确认：用户在 chrome 确认框里点了「全部关闭」，放行真正的窗口关闭
 #[tauri::command]
+#[cfg(desktop)]
 fn force_close_app(app: AppHandle) {
     CLOSE_BYPASS.store(true, Ordering::SeqCst);
     // 主窗口是纯 Window（非 WebviewWindow），必须用 get_window
@@ -2253,6 +2314,7 @@ fn force_close_app(app: AppHandle) {
 
 /// 新标签页打开 URL（网页翻译插件「结果在新标签页打开」等场景用）
 #[tauri::command]
+#[cfg(desktop)]
 fn navigate_new_tab(app: AppHandle, input: String) {
     let state = app.state::<AppState>();
     let settings = state.settings.lock().unwrap().clone();
@@ -2263,6 +2325,7 @@ fn navigate_new_tab(app: AppHandle, input: String) {
 
 /// 阅读模式开关：开启注入阅读版式，再次执行时刷新页面还原
 #[tauri::command]
+#[cfg(desktop)]
 fn toggle_reader(app: AppHandle, id: String) {
     let on = builtin_ext("trawl-reading")
         .map(|x| x.enabled)
@@ -2484,6 +2547,7 @@ const IMMERSIVE_JS: &str = r#"(() => {
 
 /// 页内翻译开关：注入沉浸式翻译脚本（再次注入 = 还原）
 #[tauri::command]
+#[cfg(desktop)]
 fn toggle_translate(app: AppHandle, id: String, to: Option<String>) {
     let ext = builtin_ext("trawl-translate");
     if ext.as_ref().map(|x| x.enabled).unwrap_or(true) == false {
@@ -2581,6 +2645,7 @@ fn reload_ext_scripts(app: &AppHandle) {
 }
 
 /// 页面加载完成后注入启用的本地扩展脚本
+#[cfg(desktop)]
 fn inject_local_extensions(app: &AppHandle, label: &str, url: &str) {
     if !url.starts_with("http") {
         return;
@@ -2599,6 +2664,7 @@ fn inject_local_extensions(app: &AppHandle, label: &str, url: &str) {
 
 /// 加载未打包的扩展程序：读 manifest.json 校验并生成登记项
 #[tauri::command]
+#[cfg(desktop)]
 fn load_unpacked_ext(path: String) -> Result<ExtensionItem, String> {
     let dir = std::path::PathBuf::from(&path);
     let manifest = dir.join("manifest.json");
@@ -3194,6 +3260,7 @@ fn load_settings() -> Settings {
     settings
 }
 
+#[cfg(desktop)]
 fn restore_state(app: &AppHandle) {
     let state = app.state::<AppState>();
     *state.settings.lock().unwrap() = load_settings();
@@ -3291,6 +3358,7 @@ fn restore_state(app: &AppHandle) {
 // 因此这些 UI 一律走浮层。
 
 /// 根据浮层类型算出窗口内的逻辑坐标矩形
+#[cfg(desktop)]
 fn overlay_rect(state: &AppState, kind: &str) -> (f64, f64, f64, f64) {
     let (x, y, w, h) = *state.layout.lock().unwrap();
     match kind {
@@ -3311,6 +3379,7 @@ fn overlay_rect(state: &AppState, kind: &str) -> (f64, f64, f64, f64) {
     }
 }
 
+#[cfg(desktop)]
 fn close_overlay_inner(app: &AppHandle) {
     let state = app.state::<AppState>();
     let info = state.overlay.lock().unwrap().take();
@@ -3355,6 +3424,7 @@ fn warm_label(kind: &str) -> String {
 }
 
 /// 启动时把预热浮层建出来（隐藏、不取焦点）
+#[cfg(desktop)]
 fn warm_popups(app: &AppHandle) {
     let Some(window) = app.get_window("main") else { return };
     for kind in WARM_KINDS {
@@ -3391,6 +3461,7 @@ fn warm_popups(app: &AppHandle) {
 }
 
 /// 显示预热浮层；返回 false 表示预热失败，调用方退回新建路径
+#[cfg(desktop)]
 fn show_warm(app: &AppHandle, kind: &str, x: f64, y: f64, w: f64, h: f64) -> bool {
     let label = warm_label(kind);
     let Some(wv) = app.get_webview(&label) else { return false };
@@ -3454,6 +3525,7 @@ fn show_warm(app: &AppHandle, kind: &str, x: f64, y: f64, w: f64, h: f64) -> boo
 ///
 /// 只能从创建线程调用：`close()` 销毁 webview 时 WebView2 会做同步收尾，
 /// 与排队中的 `add_child` 撞在一起会把主线程卡死（第二个 add_child 永远等不到消息循环）。
+#[cfg(desktop)]
 fn close_webview_now(app: &AppHandle, label: &str) {
     if let Some(wv) = app.get_webview(label) {
         let _ = wv.close();
@@ -3461,6 +3533,7 @@ fn close_webview_now(app: &AppHandle, label: &str) {
 }
 
 /// 把关闭动作排进创建队列（主线程/命令回调里一律用这个）
+#[cfg(desktop)]
 fn close_webview_later(app: &AppHandle, label: String) {
     spawn_create(app, move |app| close_webview_now(app, &label));
 }
@@ -3468,6 +3541,7 @@ fn close_webview_later(app: &AppHandle, label: String) {
 /// 创建浮层 webview（尺寸 == 面板尺寸，透明背景由页面自己铺卡片）。
 ///
 /// 前提：必须在工作线程里调用（`add_child` 阻塞等主线程，否则窗口假死）。
+#[cfg(desktop)]
 fn create_popup(
     app: &AppHandle,
     page: String,
@@ -3531,6 +3605,7 @@ fn create_popup(
 }
 
 /// 居中面板（历史 / 书签 / 下载 / 命令面板）
+#[cfg(desktop)]
 fn show_overlay(app: &AppHandle, kind: &str) {
     let state = app.state::<AppState>();
     let (ox, oy, ow, oh) = overlay_rect(&state, kind);
@@ -3547,6 +3622,7 @@ fn show_overlay(app: &AppHandle, kind: &str) {
 }
 
 /// 主窗口逻辑尺寸（宽, 高），用于把浮层高度钳制在窗口范围内
+#[cfg(desktop)]
 fn window_logical_size(app: &AppHandle) -> (f64, f64) {
     if let Some(w) = app.get_window("main") {
         if let Ok(s) = w.inner_size() {
@@ -3559,6 +3635,7 @@ fn window_logical_size(app: &AppHandle) -> (f64, f64) {
 
 /// 浮层可用高度上限：窗口高度 - 顶部偏移 - 余量。
 /// 超出部分会被窗口边缘裁掉且无法滚动到（菜单溢出 bug 的根因）。
+#[cfg(desktop)]
 fn popup_max_h(app: &AppHandle, y: f64) -> f64 {
     let (_, wh) = window_logical_size(app);
     (wh - y - 6.0).max(120.0)
@@ -3566,6 +3643,7 @@ fn popup_max_h(app: &AppHandle, y: f64) -> f64 {
 
 /// 「更多」下拉菜单：贴着触发按钮向下展开，尺寸由 chrome 侧给出
 #[tauri::command]
+#[cfg(desktop)]
 fn open_menu(app: AppHandle, x: f64, y: f64, width: f64, height: f64) {
     spawn_create(&app, move |app| {
         let w = width.max(200.0);
@@ -3582,6 +3660,7 @@ fn open_menu(app: AppHandle, x: f64, y: f64, width: f64, height: f64) {
 /// 左上角 Logo 的「标签分组 / 工作区」面板（Tabbit 风格）。
 /// 与右键菜单不同，它带输入框和配色圆点，所以用独立页面；再次点击 Logo 收回。
 #[tauri::command]
+#[cfg(desktop)]
 fn open_brandpanel(app: AppHandle, x: f64, y: f64, width: f64, height: f64) {
     let state = app.state::<AppState>();
     let is_open = state
@@ -3604,6 +3683,7 @@ fn open_brandpanel(app: AppHandle, x: f64, y: f64, width: f64, height: f64) {
 
 /// 标签列表（夸克式网格视图）
 #[tauri::command]
+#[cfg(desktop)]
 fn open_tablist(app: AppHandle) {
     spawn_create(&app, move |app| {
         let state = app.state::<AppState>();
@@ -3641,10 +3721,12 @@ fn open_tablist(app: AppHandle) {
 
 /// 地址栏浮层：位置与尺寸由 chrome 侧按地址栏实际位置给出，高度会随条目数回调调整
 #[tauri::command]
+#[cfg(desktop)]
 fn open_quickbar(app: AppHandle, x: f64, y: f64, width: f64, height: f64) {
     spawn_create(&app, move |app| open_quickbar_inner(app, x, y, width, height));
 }
 
+#[cfg(desktop)]
 fn open_quickbar_inner(app: &AppHandle, x: f64, y: f64, width: f64, height: f64) {
     let ow = width.clamp(360.0, 900.0);
     let oh = height.clamp(120.0, 460.0);
@@ -3657,6 +3739,7 @@ fn open_quickbar_inner(app: &AppHandle, x: f64, y: f64, width: f64, height: f64)
 /// 地址栏输入：把关键词转发给 quickbar 浮层做实时建议。
 /// chrome 与浮层是两个 webview，没法直接通信，走一趟 Rust。
 #[tauri::command]
+#[cfg(desktop)]
 fn push_suggest(app: AppHandle, q: String) {
     let state = app.state::<AppState>();
     let label = {
@@ -3673,6 +3756,7 @@ fn push_suggest(app: AppHandle, q: String) {
 
 /// 浮层自己报告需要多高（地址栏建议条数变化时）
 #[tauri::command]
+#[cfg(desktop)]
 fn resize_overlay(webview: tauri::Webview, app: AppHandle, height: f64) {
     let h = height.clamp(56.0, 780.0);
     let state = app.state::<AppState>();
@@ -3722,17 +3806,20 @@ fn resize_overlay(webview: tauri::Webview, app: AppHandle, height: f64) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn close_overlay(app: AppHandle) {
     spawn_create(&app, |app| close_overlay_inner(app));
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn ui_action(app: AppHandle, what: String) {
     spawn_create(&app, move |app| show_overlay(app, &what));
 }
 
 // ==================== 通用右键菜单 ====================
 
+#[cfg(desktop)]
 fn open_ctxmenu_inner(app: &AppHandle, x: f64, y: f64, width: f64, items: Vec<CtxMenuItem>) {
     let h = (items.iter().filter(|i| !i.sep).count() as f64) * 36.0
         + (items.iter().filter(|i| i.sep).count() as f64) * 9.0
@@ -3750,6 +3837,7 @@ fn open_ctxmenu_inner(app: &AppHandle, x: f64, y: f64, width: f64, items: Vec<Ct
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn open_ctxmenu(app: AppHandle, x: f64, y: f64, width: f64, items: Vec<CtxMenuItem>) {
     let state = app.state::<AppState>();
     *state.ctx_items.lock().unwrap() = items.clone();
@@ -3757,6 +3845,7 @@ fn open_ctxmenu(app: AppHandle, x: f64, y: f64, width: f64, items: Vec<CtxMenuIt
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn get_ctxmenu(state: State<'_, AppState>) -> Vec<CtxMenuItem> {
     state.ctx_items.lock().unwrap().clone()
 }
@@ -3764,6 +3853,7 @@ fn get_ctxmenu(state: State<'_, AppState>) -> Vec<CtxMenuItem> {
 /// 右键菜单项被点击：先把动作转给 chrome（它持有标签/书签状态），再收起浮层。
 /// 注意顺序：必须先 emit 再 close，否则 webview 销毁后 IPC 丢失。
 #[tauri::command]
+#[cfg(desktop)]
 fn ctxmenu_pick(app: AppHandle, action: String) {
     // 记录当前浮层：如果前端在 ctx-action 回调里开了子菜单，overlay.label 会变，
     // 这时排队在后面的 close 就不能把刚弹出的子菜单关掉。
@@ -3792,6 +3882,7 @@ fn ctxmenu_pick(app: AppHandle, action: String) {
 // ==================== 无边框窗口控制 ====================
 
 #[tauri::command]
+#[cfg(desktop)]
 fn win_minimize(app: AppHandle) {
     if let Some(w) = app.get_window("main") {
         let _ = w.minimize();
@@ -3799,6 +3890,7 @@ fn win_minimize(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn win_toggle_maximize(app: AppHandle) {
     if let Some(w) = app.get_window("main") {
         let _ = if w.is_maximized().unwrap_or(false) {
@@ -3810,6 +3902,7 @@ fn win_toggle_maximize(app: AppHandle) {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn win_close(app: AppHandle) {
     // close 走 send_event，非阻塞；但保持一致仍投到队列里
     spawn_create(&app, |app| {
@@ -3820,6 +3913,7 @@ fn win_close(app: AppHandle) {
 }
 
 /// 显示并激活主窗口（托盘单击 / 托盘菜单「打开」共用）
+#[cfg(desktop)]
 fn show_main_window(app: &AppHandle) {
     if let Some(w) = app.get_window("main") {
         let _ = w.show();
@@ -3863,10 +3957,12 @@ fn version_is_newer(latest: &str, current: &str) -> bool {
 /// 检查更新：拉取 GitHub 最新 Release 并与当前版本比较。
 /// 手动（设置页按钮）与启动时共用；失败返回 has_update=false 的兜底信息。
 #[tauri::command]
+#[cfg(desktop)]
 fn check_update() -> UpdateInfo {
     check_update_impl()
 }
 
+#[cfg(desktop)]
 fn check_update_impl() -> UpdateInfo {
     let fallback = UpdateInfo {
         has_update: false,
@@ -3933,6 +4029,7 @@ fn skip_update(app: AppHandle, version: String) {
 
 /// 用系统默认浏览器打开更新页（立即更新 → 跳转下载页）
 #[tauri::command]
+#[cfg(desktop)]
 fn open_external(app: AppHandle, url: String) {
     // 只允许 http/https，避免被当成命令注入
     if !url.starts_with("http://") && !url.starts_with("https://") {
@@ -3953,6 +4050,7 @@ fn open_external(app: AppHandle, url: String) {
 }
 
 /// 启动 3 秒后后台检查更新；有新版本且用户没跳过该版本时通知 chrome 弹提示
+#[cfg(desktop)]
 fn startup_update_check(app: AppHandle) {
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_secs(3));
@@ -3976,6 +4074,7 @@ fn startup_update_check(app: AppHandle) {
 
 /// 智能标签整理：按域名把当前工作区未固定、未归档的标签分进文件夹
 #[tauri::command]
+#[cfg(desktop)]
 fn smart_organize(app: AppHandle) {
     let state = app.state::<AppState>();
     let ws = state.active_workspace.lock().unwrap().clone();
@@ -4038,6 +4137,7 @@ fn smart_organize(app: AppHandle) {
 
 /// 标签排序：title=按标题 A-Z / domain=按域名 / recent=按最近访问（当前顺序即最近）
 #[tauri::command]
+#[cfg(desktop)]
 fn sort_tabs(app: AppHandle, mode: String) {
     let state = app.state::<AppState>();
     let ws = state.active_workspace.lock().unwrap().clone();
@@ -4086,6 +4186,7 @@ fn host_key(url: &str) -> String {
 }
 
 #[tauri::command]
+#[cfg(desktop)]
 fn toggle_vertical_tabs(app: AppHandle) {
     let state = app.state::<AppState>();
     {
@@ -4102,6 +4203,7 @@ fn toggle_vertical_tabs(app: AppHandle) {
 
 /// 新建独立窗口 / 无痕窗口：一个只含单页的内置浏览窗口（不写历史）
 #[tauri::command]
+#[cfg(desktop)]
 fn open_standalone_window(app: AppHandle, incognito: bool) {
     let label = gen_id("standalone");
     let title = if incognito { "无痕窗口 · Trawl" } else { "Trawl" };
@@ -4120,6 +4222,7 @@ fn open_standalone_window(app: AppHandle, incognito: bool) {
 // ==================== 页面缩放 ====================
 
 #[tauri::command]
+#[cfg(desktop)]
 fn zoom_page(app: AppHandle, delta: f64) {
     let state = app.state::<AppState>();
     let Some(id) = state.active_tab.lock().unwrap().clone() else { return };
@@ -4157,12 +4260,14 @@ fn clear_downloads(app: AppHandle) {
 
 /// 弹窗打开时显示的历史总条数（预估用）
 #[tauri::command]
+#[cfg(desktop)]
 fn get_initial_history_count(state: State<'_, AppState>) -> usize {
     state.history.lock().unwrap().len()
 }
 
 /// 当前页调起系统打印对话框（等同 Ctrl+P）
 #[tauri::command]
+#[cfg(desktop)]
 fn print_page(app: AppHandle) {
     let state = app.state::<AppState>();
     let id = state.active_tab.lock().unwrap().clone();
@@ -4181,6 +4286,7 @@ fn get_version(app: AppHandle) -> String {
 
 /// 打开系统邮件客户端发送反馈
 #[tauri::command]
+#[cfg(desktop)]
 fn open_feedback() {
     let url = "mailto:feedback@trawlbrowser.com?subject=Trawl%20%E5%8F%8D%E9%A6%88";
     #[cfg(windows)]
@@ -4272,6 +4378,7 @@ fn capture_screen(app: AppHandle) -> Result<String, String> {
 /// hours: 1=过去1小时 / 24=过去24小时 / 168=过去7天 / 0=全部时间。
 /// cookies/cache 为尽力删除：浏览器运行中部分文件被占用时返回 pending，重启浏览器后再次执行可清干净。
 #[tauri::command]
+#[cfg(desktop)]
 fn clear_browsing_data(
     app: AppHandle,
     hours: u64,
@@ -4341,6 +4448,7 @@ fn capture_screen(_app: AppHandle) -> Result<String, String> {
 
 /// 在资源管理器里定位下载文件
 #[tauri::command]
+#[cfg(desktop)]
 fn reveal_download(path: String) {
     if path.is_empty() || !std::path::Path::new(&path).exists() {
         return;
@@ -4374,6 +4482,7 @@ fn open_dir(dir: PathBuf) {
 
 /// 打开系统「下载」文件夹
 #[tauri::command]
+#[cfg(desktop)]
 fn open_download_dir(app: AppHandle) {
     let dir = app
         .path()
@@ -4384,6 +4493,7 @@ fn open_download_dir(app: AppHandle) {
 
 /// 打开应用数据目录（状态、书签、历史等都存在这里）
 #[tauri::command]
+#[cfg(desktop)]
 fn open_data_dir() {
     open_dir(data_root());
 }
@@ -4527,6 +4637,15 @@ pub fn run() {
     std::panic::set_hook(Box::new(|info| {
         debug_log(&format!("PANIC: {}", info));
     }));
+    #[cfg(mobile)]
+    return mobile_run();
+    #[cfg(desktop)]
+    desktop_run();
+}
+
+/// 桌面入口（Win/macOS/Linux）：多 webview 架构（chrome UI + 每标签一个 webview）
+#[cfg(desktop)]
+fn desktop_run() {
     let app = tauri::Builder::default()
         // 单实例：两个实例会共享同一份数据目录与 WebView2 缓存，会话互相覆盖、窗口互相抢焦点。
         // 第二次启动时把已有窗口提到前台，然后本进程退出。
@@ -4914,6 +5033,350 @@ pub fn run() {
         _ => {}
     });
 }
+
+// ==================== 移动端（Android/iOS） ====================
+// Tauri 移动端只有单 webview：整个应用就是一个 webview。
+// - mobile.html 是「主页」（搜索入口 / 标签列表 / 书签 / 设置入口）
+// - 点搜索结果后整个 webview 导航到目标网址，初始化脚本在远程页面注入
+//   「‹ 后退 / ⌂ 主页」悬浮条：‹ 用纯 JS history.back()，⌂ 直接 location 跳回主页
+// - 页面标题通过 capability 授权的 mob_report 命令上报（remote 上下文仅放行这一个命令）
+// - 标签只保留元信息（url/title），不保留页面滚动/表单状态（单 webview 架构的 v1 权衡）
+
+// MobTab 跨平台定义（桌面端不使用，仅供 AppState 字段类型一致）
+#[derive(Clone, Serialize)]
+struct MobTab {
+    id: String,
+    url: String,
+    title: String,
+    ts: u64,
+}
+
+#[cfg(mobile)]
+#[derive(Clone, Serialize)]
+struct MobStatePayload {
+    tabs: Vec<MobTab>,
+    active: Option<String>,
+}
+
+#[cfg(mobile)]
+static MOB_DATA_ROOT: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// 移动端本地页面地址：Android/iOS 的 Tauri 本地源是 tauri://localhost
+#[cfg(mobile)]
+fn mob_page_url(path: &str) -> tauri::Url {
+    tauri::Url::parse(&format!(
+        "tauri://localhost/{}?v={}",
+        path,
+        env!("CARGO_PKG_VERSION")
+    ))
+    .expect("mob page url")
+}
+
+#[cfg(mobile)]
+fn mob_home_url() -> String {
+    format!(
+        "tauri://localhost/mobile.html?v={}",
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+/// 注入到所有页面的初始化脚本：本地页（tauri://localhost）不注入浮层，
+/// 远程页注入「‹ 后退 / ⌂ 主页」悬浮条并上报页面标题。
+/// ⌂ 用 location 跳转（不需要 IPC），标题上报用 capability 放行的 mob_report。
+#[cfg(mobile)]
+fn mob_init_js() -> String {
+    let home = mob_home_url();
+    r#"(() => {
+  if (window.__TRAWL_MOBILE_OVERLAY__) return;
+  window.__TRAWL_MOBILE_OVERLAY__ = true;
+  const local = location.protocol === 'tauri:' || location.hostname === 'tauri.localhost';
+  if (local) return;
+  const HOME = '__HOME__';
+  const invoke = (() => { try { return window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke; } catch (e) { return null; } })();
+  let bar = null;
+  function ensureBar() {
+    if (bar || !document.body) return;
+    bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;height:42px;display:flex;align-items:center;gap:6px;padding:0 8px;z-index:2147483647;background:rgba(247,249,251,0.96);border-bottom:1px solid rgba(0,0,0,0.08);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;';
+    const back = document.createElement('div');
+    back.textContent = '‹';
+    back.style.cssText = 'min-width:34px;height:34px;line-height:30px;text-align:center;font-size:24px;color:#333;border-radius:17px;cursor:pointer;user-select:none;';
+    back.addEventListener('click', () => { try { history.back(); } catch (e) {} });
+    const homeBtn = document.createElement('div');
+    homeBtn.textContent = '⌂ Trawl';
+    homeBtn.style.cssText = 'height:30px;line-height:30px;font-size:13px;font-weight:600;color:#1a73e8;background:#fff;border:1px solid #dde3ea;border-radius:15px;cursor:pointer;user-select:none;padding:0 12px;';
+    homeBtn.addEventListener('click', () => { location.href = HOME; });
+    bar.appendChild(back);
+    bar.appendChild(homeBtn);
+    document.body.appendChild(bar);
+    setTimeout(report, 300);
+  }
+  function report() {
+    if (!invoke) return;
+    try {
+      invoke('mob_report', { url: location.href.split('#')[0], title: (document.title || location.hostname || '').slice(0, 120) });
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { ensureBar(); report(); });
+  } else {
+    ensureBar();
+    report();
+  }
+})();
+"#
+    .replace("__HOME__", &home)
+}
+
+#[cfg(mobile)]
+fn mob_emit(app: &AppHandle) {
+    let payload = {
+        let state = app.state::<AppState>();
+        let tabs = state.mob_tabs.lock().unwrap().clone();
+        let active = state.mob_active.lock().unwrap().clone();
+        MobStatePayload { tabs, active }
+    };
+    let _ = app.emit("mob-state", payload);
+}
+
+#[cfg(mobile)]
+fn mob_navigate(app: &AppHandle, url_str: &str) -> Result<(), String> {
+    let win = app
+        .get_webview_window("main")
+        .ok_or_else(|| "主窗口不存在".to_string())?;
+    let url: tauri::Url = url_str
+        .parse()
+        .map_err(|e| format!("URL 解析失败 {}: {}", url_str, e))?;
+    win.navigate(url).map_err(|e| e.to_string())
+}
+
+// ---- 移动端命令 ----
+
+#[cfg(mobile)]
+#[tauri::command]
+fn mob_state(app: AppHandle) -> MobStatePayload {
+    let state = app.state::<AppState>();
+    let tabs = state.mob_tabs.lock().unwrap().clone();
+    let active = state.mob_active.lock().unwrap().clone();
+    MobStatePayload { tabs, active }
+}
+
+/// 解析输入（搜索词或网址）并导航整个 webview。
+/// new_tab=true 或当前无活动空标签时新建标签记录。
+#[cfg(mobile)]
+#[tauri::command]
+fn mob_open(app: AppHandle, input: String, new_tab: Option<bool>) -> Result<MobTab, String> {
+    let input = input.trim().to_string();
+    if input.is_empty() {
+        return Err("输入为空".to_string());
+    }
+    let state = app.state::<AppState>();
+    let settings = state.settings.lock().unwrap().clone();
+    let target = resolve_input(&input, &settings);
+    let id = {
+        let mut tabs = state.mob_tabs.lock().unwrap();
+        let mut act = state.mob_active.lock().unwrap();
+        let reuse = !new_tab.unwrap_or(false)
+            && act
+                .as_ref()
+                .and_then(|a| tabs.iter().find(|t| &t.id == a))
+                .map(|t| t.url.is_empty())
+                .unwrap_or(false);
+        let id = if reuse {
+            let a = act.clone().unwrap();
+            let t = tabs.iter_mut().find(|t| t.id == a).unwrap();
+            t.url = target.clone();
+            a
+        } else {
+            let t = MobTab {
+                id: gen_id("tab"),
+                url: target.clone(),
+                title: String::new(),
+                ts: now_ts(),
+            };
+            let id = t.id.clone();
+            tabs.push(t);
+            id
+        };
+        *act = Some(id.clone());
+        id
+    };
+    record_history(&state, &target, "");
+    mob_navigate(&app, &target)?;
+    mob_emit(&app);
+    let tabs = state.mob_tabs.lock().unwrap();
+    Ok(tabs
+        .iter()
+        .find(|t| t.id == id)
+        .cloned()
+        .unwrap_or(MobTab { id, url: target, title: String::new(), ts: now_ts() }))
+}
+
+/// 新建空白标签并回到主页
+#[cfg(mobile)]
+#[tauri::command]
+fn mob_new_tab(app: AppHandle) {
+    let state = app.state::<AppState>();
+    {
+        let mut tabs = state.mob_tabs.lock().unwrap();
+        tabs.push(MobTab {
+            id: gen_id("tab"),
+            url: String::new(),
+            title: String::new(),
+            ts: now_ts(),
+        });
+        *state.mob_active.lock().unwrap() = tabs.last().map(|t| t.id.clone());
+    }
+    drop(state);
+    let _ = mob_navigate(&app, &mob_home_url());
+    mob_emit(&app);
+}
+
+/// 切换标签：导航到该标签的 url（空白标签回主页）
+#[cfg(mobile)]
+#[tauri::command]
+fn mob_switch_tab(app: AppHandle, id: String) {
+    let state = app.state::<AppState>();
+    let url = {
+        let mut act = state.mob_active.lock().unwrap();
+        let url = state
+            .mob_tabs
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|t| t.id == id)
+            .map(|t| t.url.clone());
+        *act = Some(id);
+        url
+    };
+    drop(state);
+    let target = match url {
+        Some(u) if !u.is_empty() => u,
+        _ => mob_home_url(),
+    };
+    let _ = mob_navigate(&app, &target);
+    mob_emit(&app);
+}
+
+/// 关闭标签；若关的是活动标签，自动切到最近一个有内容的标签（都没有就回主页）
+#[cfg(mobile)]
+#[tauri::command]
+fn mob_close_tab(app: AppHandle, id: String) {
+    let state = app.state::<AppState>();
+    let was_active;
+    let next_url;
+    {
+        let mut tabs = state.mob_tabs.lock().unwrap();
+        was_active = state.mob_active.lock().unwrap().as_deref() == Some(id.as_str());
+        tabs.retain(|t| t.id != id);
+        let next = tabs.iter().rev().find(|t| !t.url.is_empty()).cloned();
+        *state.mob_active.lock().unwrap() = next.as_ref().map(|t| t.id.clone());
+        next_url = next.map(|t| t.url);
+    }
+    drop(state);
+    if was_active {
+        let target = next_url.unwrap_or_else(mob_home_url);
+        let _ = mob_navigate(&app, &target);
+    }
+    mob_emit(&app);
+}
+
+/// 跳回主页（⌂ 按钮的 IPC 路径；浮层主路径是 location 跳转，此命令作兜底）
+#[cfg(mobile)]
+#[tauri::command]
+fn mob_home(app: AppHandle) {
+    let _ = mob_navigate(&app, &mob_home_url());
+    mob_emit(&app);
+}
+
+/// 远程页面上报页面信息（capability 仅对 remote 上下文放行此命令）
+#[cfg(mobile)]
+#[tauri::command]
+fn mob_report(app: AppHandle, url: String, title: String) {
+    let state = app.state::<AppState>();
+    {
+        let mut tabs = state.mob_tabs.lock().unwrap();
+        let mut act = state.mob_active.lock().unwrap();
+        // 优先精确匹配 url（去掉 fragment 后上报），匹配不到就更新活动标签的标题
+        let exact = tabs.iter_mut().find(|t| t.url == url);
+        if let Some(t) = exact {
+            t.title = title.clone();
+        } else if let Some(a) = act.clone() {
+            if let Some(t) = tabs.iter_mut().find(|t| t.id == a) {
+                if !t.url.is_empty() && url.starts_with(t.url.as_str()) {
+                    t.title = title.clone();
+                }
+            }
+        }
+    }
+    record_history(&state, &url, &title);
+    drop(state);
+    mob_emit(&app);
+}
+
+/// 移动端入口：单 webview，主页 = mobile.html
+#[cfg(mobile)]
+fn mobile_run() {
+    tauri::Builder::default()
+        .manage(AppState {
+            settings: Mutex::new(load_settings()),
+            ..Default::default()
+        })
+        .invoke_handler(tauri::generate_handler![
+            // 数据 / 设置（与桌面共用，均为纯数据命令）
+            get_settings,
+            save_settings,
+            reset_settings,
+            get_history,
+            clear_history,
+            toggle_bookmark,
+            remove_bookmark,
+            import_bookmarks,
+            get_extensions,
+            save_extensions,
+            get_downloads,
+            clear_downloads,
+            skip_update,
+            pw_list,
+            pw_add,
+            pw_update,
+            pw_del,
+            pw_import_csv,
+            verify_user_consent,
+            get_version,
+            debug_msg,
+            exit_app,
+            initial_state,
+            // 移动端专属
+            mob_state,
+            mob_open,
+            mob_new_tab,
+            mob_switch_tab,
+            mob_close_tab,
+            mob_home,
+            mob_report
+        ])
+        .setup(|app| {
+            // 数据目录：Android/iOS 没有 USERPROFILE，用应用私有目录
+            if let Ok(dir) = app.path().app_data_dir() {
+                let _ = MOB_DATA_ROOT.set(dir.join("data"));
+            }
+            start_state_worker(app.handle().clone());
+            tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                WebviewUrl::External(mob_page_url("mobile.html")),
+            )
+            .title("Trawl")
+            .initialization_script(&mob_init_js())
+            .build()
+            .map_err(|e| format!("创建主窗口失败: {e}"))?;
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("Trawl 移动端启动失败");
+}
+
 
 #[cfg(test)]
 mod tests {

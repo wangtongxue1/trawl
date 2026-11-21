@@ -20,6 +20,8 @@ Trawl 取意「拖网」——一张网撒过所有搜索引擎，捞回全部�
   （manifest 校验 + content_scripts 自动注入）
 - **本机密码管理**（`trawl://passwords`）：DPAPI 加密、Windows Hello 验证、CSV 导入、密码检查
 - **分屏 / Glance 预览**：左右/上下分屏、Alt+点击 Glance 预览
+- **移动端（Android）**：单 webview 架构——`mobile.html` 主页（搜索 / 标签列表 / 书签）+
+  远程页面注入「‹ 后退 / ⌂ 主页」浮层，标签保留元信息
 - **稳定性**：单实例锁、原子写配置、损坏自愈、UTF-8(BOM)/UTF-16 兼容、会话恢复
 
 ## 技术架构
@@ -61,8 +63,14 @@ npx tauri build            # 发行版 + MSI / NSIS（target\release\bundle\）
 |------|------|
 | Windows | `.msi` + `.exe`（NSIS）安装包 + 便携版 zip |
 | macOS | Apple Silicon `aarch64.dmg` + Intel `x64.dmg` |
-| Android / iOS | ⏸️ 暂停：Tauri 移动端不支持桌面多 webview API，需移动端单 webview UI 重构后启用（job 已保留 `if: false`） |
+| Android | `aarch64` APK（debug 签名可直接侧载；配置 `ANDROID_KEYSTORE` 等 Secrets 后走正式签名） |
+| iOS | ⏸️ 暂停：移动端架构已就绪（`lib.rs` mobile 模块），配置签名 Secrets 后可启用 |
 | 鸿蒙 OS | Tauri 暂不支持 HarmonyOS，需独立 ArkTS 工程 |
+
+移动端架构说明：Tauri 移动端只有**单 webview**，桌面「主窗口 + chrome webview + 每标签一个 webview」
+的 API 不可用。`lib.rs` 按 `#[cfg(mobile)]` 分出独立入口：整个应用就是一个 webview，`mobile.html`
+是主页，导航时整个 webview 跳转 URL，注入脚本提供后退/主页浮层（remote 上下文经 capability
+仅放行 `mob_report` 命令）。
 
 CI（`.github/workflows/ci.yml`）：每次 push / PR 在 Windows / macOS / Linux 三平台
 `cargo check` + `cargo test`（15 个单元测试）。
@@ -71,7 +79,7 @@ CI（`.github/workflows/ci.yml`）：每次 push / PR 在 Windows / macOS / Linu
 
 ```bash
 git push origin main            # 自动触发构建
-git tag v0.7.14 && git push origin v0.7.14
+git tag v0.7.16 && git push origin v0.7.16
 # 构建完成后 Release 为草稿态，检查产物后点发布
 ```
 

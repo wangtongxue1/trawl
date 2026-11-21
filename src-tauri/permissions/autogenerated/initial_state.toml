@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-initial-state"
+description = "Enables the initial_state command without any pre-configured scope."
+commands.allow = ["initial_state"]
+
+[[permission]]
+identifier = "deny-initial-state"
+description = "Denies the initial_state command without any pre-configured scope."
+commands.deny = ["initial_state"]

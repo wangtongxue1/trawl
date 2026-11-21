@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-close-all-tabs-and-newtab"
+description = "Enables the close_all_tabs_and_newtab command without any pre-configured scope."
+commands.allow = ["close_all_tabs_and_newtab"]
+
+[[permission]]
+identifier = "deny-close-all-tabs-and-newtab"
+description = "Denies the close_all_tabs_and_newtab command without any pre-configured scope."
+commands.deny = ["close_all_tabs_and_newtab"]

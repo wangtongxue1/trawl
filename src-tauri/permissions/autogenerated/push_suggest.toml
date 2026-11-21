@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-push-suggest"
+description = "Enables the push_suggest command without any pre-configured scope."
+commands.allow = ["push_suggest"]
+
+[[permission]]
+identifier = "deny-push-suggest"
+description = "Denies the push_suggest command without any pre-configured scope."
+commands.deny = ["push_suggest"]

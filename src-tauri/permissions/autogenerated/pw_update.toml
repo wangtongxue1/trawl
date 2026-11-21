@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pw-update"
+description = "Enables the pw_update command without any pre-configured scope."
+commands.allow = ["pw_update"]
+
+[[permission]]
+identifier = "deny-pw-update"
+description = "Denies the pw_update command without any pre-configured scope."
+commands.deny = ["pw_update"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-page-pressed"
+description = "Enables the page_pressed command without any pre-configured scope."
+commands.allow = ["page_pressed"]
+
+[[permission]]
+identifier = "deny-page-pressed"
+description = "Denies the page_pressed command without any pre-configured scope."
+commands.deny = ["page_pressed"]

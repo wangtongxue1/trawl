@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Trawl</title>
+<style>
+  :root {
+    --bg: #f5f7f9; --card: #ffffff; --text: #1c2126; --sub: #6b7680;
+    --border: #e4e9ee; --accent: #4f6ef2; --accent-weak: #eef1fe;
+    --danger: #e5484d;
+  }
+  html.dark {
+    --bg: #16191d; --card: #22262c; --text: #e8ebee; --sub: #9aa4ae;
+    --border: #30353c; --accent: #7d94f5; --accent-weak: #2a3040;
+    --danger: #ff6369;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; max-width: 100%; overflow-x: hidden; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    padding: max(12px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+  }
+  .top { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 14px; }
+  .logo { font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
+  .logo span { color: var(--accent); }
+  .gear {
+    width: 38px; height: 38px; border-radius: 12px; background: var(--card);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 19px; cursor: pointer; color: var(--sub);
+  }
+  .search-box {
+    display: flex; align-items: center; background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 4px 6px 4px 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  }
+  .search-box input {
+    flex: 1; border: 0; outline: 0; background: transparent; color: var(--text);
+    font-size: 16px; height: 42px; min-width: 0;
+  }
+  .search-box button {
+    border: 0; background: var(--accent); color: #fff; font-size: 14px; font-weight: 600;
+    border-radius: 10px; padding: 9px 18px; cursor: pointer;
+  }
+  .engines { display: flex; gap: 8px; margin: 12px 2px 4px; overflow-x: auto; scrollbar-width: none; }
+  .engines::-webkit-scrollbar { display: none; }
+  .eng {
+    flex: 0 0 auto; padding: 6px 14px; border-radius: 16px; font-size: 13px; cursor: pointer;
+    background: var(--card); border: 1px solid var(--border); color: var(--sub);
+  }
+  .eng.on { background: var(--accent-weak); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .sec { margin-top: 22px; }
+  .sec-h { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 8px; }
+  .sec-h b { font-size: 14px; color: var(--sub); font-weight: 600; }
+  .sec-h .act { font-size: 13px; color: var(--accent); cursor: pointer; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; }
+  .row + .row { border-top: 1px solid var(--border); }
+  .row:active { background: var(--accent-weak); }
+  .row .txt { flex: 1; min-width: 0; }
+  .row .t { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .u { font-size: 12px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .row .x {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 10px; color: var(--sub);
+    display: flex; align-items: center; justify-content: center; font-size: 15px; cursor: pointer;
+  }
+  .row .x:active { background: rgba(229,72,77,0.12); color: var(--danger); }
+  .empty { padding: 18px; text-align: center; color: var(--sub); font-size: 13px; }
+  .dots { color: var(--sub); font-size: 13px; padding: 2px; }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="logo">Trawl<span>.</span></div>
+    <div class="gear" id="btn-settings">⚙</div>
+  </div>
+
+  <form class="search-box" id="search-form">
+    <input id="q" type="search" placeholder="搜索或输入网址" autocomplete="off" enterkeyhint="search">
+    <button type="submit">搜索</button>
+  </form>
+  <div class="engines" id="engines"></div>
+
+  <div class="sec">
+    <div class="sec-h"><b>打开的标签页</b><span class="act" id="btn-newtab">＋ 新标签页</span></div>
+    <div class="card" id="tabs"></div>
+  </div>
+
+  <div class="sec" id="sec-bm">
+    <div class="sec-h"><b>书签</b></div>
+    <div class="card" id="bookmarks"></div>
+  </div>
+
+  <div class="sec" id="sec-his">
+    <div class="sec-h"><b>最近历史</b></div>
+    <div class="card" id="history"></div>
+  </div>
+
+<script>
+(function () {
+  var T = window.__TAURI__;
+  var invoke = T && T.core && T.core.invoke;
+  var listen = T && T.event && T.event.listen;
+  var engine = null;       // 当前选择的搜索引擎名
+  var settings = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ---- 主题跟随设置 ----
+  function applyTheme(theme) {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }
+
+  // ---- 搜索引擎 chips ----
+  function renderEngines() {
+    if (!settings) return;
+    var list = settings.engines || [];
+    var cur = engine || settings.default_engine || (list[0] && list[0].name);
+    engine = cur;
+    $('engines').innerHTML = list.map(function (e) {
+      return '<div class="eng' + (e.name === cur ? ' on' : '') + '" data-name="' + esc(e.name) + '">' + esc(e.name) + '</div>';
+    }).join('');
+  }
+  $('engines').addEventListener('click', function (ev) {
+    var t = ev.target.closest('.eng');
+    if (!t) return;
+    engine = t.getAttribute('data-name');
+    renderEngines();
+  });
+
+  // ---- 标签列表 ----
+  function renderTabs(p) {
+    var tabs = (p && p.tabs) || [];
+    var active = p && p.active;
+    if (!tabs.length) {
+      $('tabs').innerHTML = '<div class="empty">没有打开的标签页</div>';
+      return;
+    }
+    $('tabs').innerHTML = tabs.map(function (t) {
+      var title = t.title || t.url || '空白标签页';
+      return '<div class="row" data-id="' + esc(t.id) + '">'
+        + '<div class="txt"><div class="t">' + (t.id === active ? '● ' : '') + esc(title) + '</div>'
+        + '<div class="u">' + esc(t.url || '空白页') + '</div></div>'
+        + '<div class="x" data-x="' + esc(t.id) + '">✕</div></div>';
+    }).join('');
+  }
+  $('tabs').addEventListener('click', function (ev) {
+    var x = ev.target.closest('.x');
+    if (x) {
+      invoke && invoke('mob_close_tab', { id: x.getAttribute('data-x') });
+      return;
+    }
+    var r = ev.target.closest('.row');
+    if (r) invoke && invoke('mob_switch_tab', { id: r.getAttribute('data-id') });
+  });
+  $('btn-newtab').addEventListener('click', function () {
+    invoke && invoke('mob_new_tab');
+  });
+
+  // ---- 书签 / 历史 ----
+  function renderRows(el, items, isHist) {
+    if (!items || !items.length) {
+      el.innerHTML = '<div class="empty">暂无内容</div>';
+      el.parentElement.classList.add('hide');
+      return;
+    }
+    el.parentElement.classList.remove('hide');
+    el.innerHTML = items.slice(0, 12).map(function (b) {
+      return '<div class="row" data-url="' + esc(b.url) + '">'
+        + '<div class="txt"><div class="t">' + esc(b.title || b.url) + '</div>'
+        + (isHist ? '' : '<div class="u">' + esc(b.url) + '</div>')
+        + '</div></div>';
+    }).join('');
+  }
+  // 历史：StatePayload 不带 history，单独拉
+  function loadHistory() {
+    invoke && invoke('get_history').then(function (h) {
+      renderRows($('history'), (h || []).slice(0, 12), true);
+    }).catch(function () {});
+  }
+
+  // ---- 搜索 ----
+  $('search-form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var v = $('q').value.trim();
+    if (!v) return;
+    invoke && invoke('mob_open', { input: v, newTab: false }).then(function () {
+      $('q').value = '';
+      $('q').blur();
+    }).catch(function (e) { alert(String(e)); });
+  });
+
+  // ---- 设置入口 ----
+  $('btn-settings').addEventListener('click', function () {
+    invoke && invoke('mob_open', { input: 'trawl://settings', newTab: false }).catch(function () {});
+  });
+
+  // ---- 书签/历史点击 ----
+  document.body.addEventListener('click', function (ev) {
+    var r = ev.target.closest('.row[data-url]');
+    if (r) invoke && invoke('mob_open', { input: r.getAttribute('data-url'), newTab: false }).catch(function () {});
+  });
+
+  // ---- 事件订阅 + 初始快照 ----
+  function refresh() {
+    if (!invoke) {
+      // 无 Tauri 环境（浏览器直接打开/预览）：渲染空态与演示引擎，保证页面不破相
+      renderTabs({ tabs: [] });
+      settings = { engines: [{ name: '元宝', template: '' }, { name: '百度', template: '' }], default_engine: '元宝', theme: 'light' };
+      applyTheme('light');
+      renderEngines();
+      renderRows($('bookmarks'), [], false);
+      renderRows($('history'), [], true);
+      return;
+    }
+    invoke('mob_state').then(function (p) {
+      renderTabs(p);
+    }).catch(function () {});
+    invoke && invoke('initial_state').then(function (snap) {
+      settings = snap.settings || settings;
+      applyTheme(settings ? settings.theme : 'light');
+      renderEngines();
+      renderRows($('bookmarks'), snap.bookmarks, false);
+    }).catch(function () {});
+    loadHistory();
+  }
+  refresh();
+  if (listen) {
+    listen('mob-state', function (ev) { renderTabs(ev.payload); });
+    listen('state', function (ev) {
+      var snap = ev.payload || {};
+      settings = snap.settings || settings;
+      applyTheme(settings ? settings.theme : 'light');
+      renderEngines();
+      renderRows($('bookmarks'), snap.bookmarks, false);
+    });
+  }
+  // 回到主页时输入框自动聚焦（延迟等页面就绪）
+  setTimeout(function () { try { $('q').focus(); } catch (e) {} }, 250);
+})();
+</script>
+</body>
+</html>

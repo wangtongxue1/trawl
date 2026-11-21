@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mob-new-tab"
+description = "Enables the mob_new_tab command without any pre-configured scope."
+commands.allow = ["mob_new_tab"]
+
+[[permission]]
+identifier = "deny-mob-new-tab"
+description = "Denies the mob_new_tab command without any pre-configured scope."
+commands.deny = ["mob_new_tab"]

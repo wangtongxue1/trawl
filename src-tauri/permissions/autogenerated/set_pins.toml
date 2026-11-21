@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-pins"
+description = "Enables the set_pins command without any pre-configured scope."
+commands.allow = ["set_pins"]
+
+[[permission]]
+identifier = "deny-set-pins"
+description = "Denies the set_pins command without any pre-configured scope."
+commands.deny = ["set_pins"]

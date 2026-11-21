@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-smart-organize"
+description = "Enables the smart_organize command without any pre-configured scope."
+commands.allow = ["smart_organize"]
+
+[[permission]]
+identifier = "deny-smart-organize"
+description = "Denies the smart_organize command without any pre-configured scope."
+commands.deny = ["smart_organize"]

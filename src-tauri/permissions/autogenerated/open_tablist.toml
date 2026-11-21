@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-tablist"
+description = "Enables the open_tablist command without any pre-configured scope."
+commands.allow = ["open_tablist"]
+
+[[permission]]
+identifier = "deny-open-tablist"
+description = "Denies the open_tablist command without any pre-configured scope."
+commands.deny = ["open_tablist"]

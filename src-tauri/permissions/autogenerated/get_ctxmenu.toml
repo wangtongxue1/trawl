@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-ctxmenu"
+description = "Enables the get_ctxmenu command without any pre-configured scope."
+commands.allow = ["get_ctxmenu"]
+
+[[permission]]
+identifier = "deny-get-ctxmenu"
+description = "Denies the get_ctxmenu command without any pre-configured scope."
+commands.deny = ["get_ctxmenu"]

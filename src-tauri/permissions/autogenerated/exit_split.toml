@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-exit-split"
+description = "Enables the exit_split command without any pre-configured scope."
+commands.allow = ["exit_split"]
+
+[[permission]]
+identifier = "deny-exit-split"
+description = "Denies the exit_split command without any pre-configured scope."
+commands.deny = ["exit_split"]

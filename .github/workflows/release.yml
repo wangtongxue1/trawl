@@ -7,8 +7,8 @@ name: Release Trawl
 # 产物：
 #   Windows: .msi / .exe(NSIS) 安装包 + 便携版 zip
 #   macOS:   Apple Silicon (aarch64.dmg) + Intel (x64.dmg)
-#   Android: 暂停（需移动端 UI 重构，Tauri 移动端不支持桌面多 webview API）
-#   iOS:     暂停（同上）
+#   Android: aarch64 APK（单 webview 移动端架构，v0.7.16 起恢复构建）
+#   iOS:     暂停（无签名证书；移动端架构已就绪，配好 secrets 后可开）
 # 鸿蒙 OS：Tauri 暂不支持 HarmonyOS，无法云端构建（见 README 说明）
 #
 # 说明：不用 tauri-action，改为显式 npx tauri build + gh release upload：
@@ -169,12 +169,9 @@ jobs:
           gh release upload "v$VERSION" "${FILES[@]}" --clobber
 
   # ============ Android：APK（arm64） ============
-  # ⚠️ 暂时禁用：Tauri 移动端不支持桌面专属的多 webview API（Window::add_child、
-  # Webview::set_bounds/show/hide/close/reparent/set_focus、WindowBuilder::decorations、
-  # minimize/maximize 等），当前「主窗口 + chrome webview + 每标签一个 webview」的
-  # 桌面架构需要为移动端重写为单 webview UI 后才能出 APK（36 处编译错误，见 ci-logs）。
+  # 单 webview 移动端架构（lib.rs mobile 模块 + dist/mobile.html），v0.7.16 起恢复。
+  # 无签名 secrets 时自动用 debug 签名，APK 可直接侧载安装。
   build-android:
-    if: false
     permissions:
       contents: write
     runs-on: ubuntu-latest

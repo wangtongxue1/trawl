@@ -1,6 +1,6 @@
 [package]
 name = "trawl"
-version = "0.7.15"
+version = "0.7.16"
 edition = "2021"
 description = "Trawl 元搜浏览器 — 把浏览器做薄，把搜索做快。Less browser. More search."
 
@@ -17,10 +17,6 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["unstable", "tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-# 更新检测：拉 GitHub Releases 最新版。
-# TLS 用系统实现（Windows=schannel / macOS=Security.framework），避免 rustls 的
-# ring C 依赖在部分 MSVC 工具链下编译失败。
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "native-tls"] }
 
 # Windows 专属依赖：不门控会被 macOS/Android 也拉去编译（windows-future 在非
 # Windows 目标缺 IMarshal/marshaler/submit 符号，直接编译失败）
@@ -40,8 +36,14 @@ windows = { version = "0.62", features = [
 winreg = "0.56"
 
 # 单实例插件不支持移动端，桌面平台（Win/Mac/Linux）启用
+# reqwest 仅桌面用（更新检测）：Android 上 native-tls 走 OpenSSL 需要 NDK 编 C，
+# iOS 上亦无必要（应用商店负责更新），移动端直接不编译
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
+# 更新检测：拉 GitHub Releases 最新版。
+# TLS 用系统实现（Windows=schannel / macOS=Security.framework），避免 rustls 的
+# ring C 依赖在部分 MSVC 工具链下编译失败。
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "native-tls"] }
 
 [profile.release]
 lto = false

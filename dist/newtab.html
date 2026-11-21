@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-accent="green">
+<head>
+<meta charset="UTF-8">
+<title>新标签页</title>
+<style>
+:root {
+  --accent: #10b981; --accent-deep: #0b8f66;
+  --bg: #f7faf8; --card: #ffffff;
+  --text: #1f2937; --text-dim: #6b7280; --border: #e3eae5;
+}
+:root[data-theme="dark"] {
+  --bg: #16181d; --card: #1d2027;
+  --text: #e5e7eb; --text-dim: #9ca3af; --border: #2e3440;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+/* 背景风格（设置 → 新标签页）：纯白 / 浅灰 / 渐变 / 暗色 */
+body[data-bg="gray"] {
+  --bg: #e3e7ee; --card: #ffffff; --border: #d4dae3;
+  background: linear-gradient(180deg, #e9edf3 0%, #e3e7ee 100%);
+}
+body[data-bg="gradient"] {
+  --card: #ffffff;
+  background: linear-gradient(160deg, #d9f2e5 0%, #d7e6fb 45%, #ecd9fb 100%);
+}
+body[data-bg="dark"] {
+  --bg: #12151a; --card: #1c2028;
+  --text: #e8ebef; --text-dim: #98a2b3; --border: #2e3440;
+  background: radial-gradient(1200px 600px at 50% 0%, #1a1f28 0%, #12151a 70%);
+}
+/* 暗色背景下搜索框与卡片也要跟随，否则黑底白卡刺眼 */
+body[data-bg="dark"] #search-bar { background: #1c2028; border-color: #2e3440; }
+body[data-bg="dark"] #search-input { color: #e8ebef; }
+body[data-bg="dark"] #search-input::placeholder { color: #98a2b3; }
+body[data-bg="dark"] .bm-card, body[data-bg="dark"] #shortcut-grid .sc { border-color: #2e3440; }
+body {
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  padding-top: 12vh;
+}
+#top { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
+#top img { width: 38px; height: 38px; }
+#top .name { font-size: 15px; font-weight: 700; letter-spacing: .5px; }
+#top .name b { color: var(--accent); }
+#slogan { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+/* 时钟（设置页里承诺的「时钟+搜索」，之前根本没实现） */
+#clock { text-align: center; margin-bottom: 22px; }
+#clock-time {
+  font-size: 46px; font-weight: 200; letter-spacing: 2px;
+  color: var(--text); line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+#clock-date { font-size: 12.5px; color: var(--text-dim); margin-top: 6px; letter-spacing: .5px; }
+
+#search-card {
+  width: min(560px, 84vw);
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px 12px;
+  box-shadow: 0 10px 32px rgba(0,0,0,.05);
+}
+#search-row { display: flex; align-items: center; gap: 0; }
+/* 引擎改成圆形图标按钮：select 透明覆盖，保留原生选择能力 */
+#engine-wrap {
+  position: relative;
+  width: 34px; height: 34px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+#engine-icon {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+  user-select: none;
+}
+#engine-icon img { width: 22px; height: 22px; object-fit: contain; }
+#engine-icon .brand-icon {
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+#engine-select {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0; cursor: pointer;
+  border: none;
+}
+#search-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  color: var(--text); font-size: 15px; padding: 8px 4px;
+}
+#search-input::placeholder { color: var(--text-dim); }
+#send {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: none; background: var(--accent); color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+#send:hover { background: var(--accent-deep); }
+#search-meta {
+  display: flex; align-items: center; gap: 8px;
+  border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px;
+  font-size: 12px; color: var(--text-dim);
+}
+#engine-pill {
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); border-radius: 999px; padding: 5px 12px;
+  font-size: 12px; cursor: pointer;
+}
+#engine-pill:hover { border-color: var(--accent); color: var(--accent); }
+#hint { margin-left: auto; }
+
+#shortcuts { width: min(620px, 86vw); margin-top: 36px; }
+.section-title { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+#shortcut-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.shortcut {
+  width: 76px; padding: 12px 0 10px; border-radius: 12px;
+  background: var(--card); border: 1px solid var(--border);
+  text-align: center; cursor: pointer; font-size: 11px; color: var(--text-dim);
+}
+.shortcut:hover { border-color: var(--accent); color: var(--text); }
+.shortcut .ic {
+  width: 32px; height: 32px; margin: 0 auto 7px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+  overflow: hidden;
+}
+.shortcut .ic img { width: 22px; height: 22px; object-fit: contain; }
+
+  background: var(--card); border: 1px solid var(--border); border-radius: 9px;
+  margin-bottom: 6px; font-size: 12.5px; cursor: pointer; }
+.empty { color: var(--text-dim); font-size: 12px; padding: 10px; }
+
+#foot { position: fixed; bottom: 18px; font-size: 11px; color: var(--text-dim); }
+#foot b { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div id="clock">
+    <div id="clock-time">--:--</div>
+    <div id="clock-date"></div>
+  </div>
+
+  <div id="top">
+    <img src="logo/trawl-icon.svg" alt="Trawl">
+    <div>
+      <div class="name"><b>Trawl</b> 元搜浏览器</div>
+      <div id="slogan">把浏览器做薄，把搜索做快</div>
+    </div>
+  </div>
+
+  <div id="search-card">
+    <div id="search-row">
+      <div id="engine-wrap">
+        <div id="engine-icon" title="切换搜索引擎"></div>
+        <select id="engine-select" title="搜索引擎"></select>
+      </div>
+      <input id="search-input" type="text" spellcheck="false"
+             placeholder="搜索或输入网址">
+      <button id="send" title="打开"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+    </div>
+  </div>
+
+  <div id="shortcuts">
+    <div class="section-title">常用</div>
+    <div id="shortcut-grid"></div>
+  </div>
+
+  <div id="foot"><b>Trawl</b> 元搜浏览器 · Less browser. More search.</div>
+
+<script>
+const { invoke } = window.__TAURI__.core;
+const DEFAULT_ENGINES = [
+  { name: '元宝搜索', template: 'https://so.qq.com/?query={query}' },
+  { name: '百度', template: 'https://www.baidu.com/s?wd={query}' },
+  { name: 'Bing', template: 'https://www.bing.com/search?q={query}' },
+  { name: 'Google', template: 'https://www.google.com/search?q={query}' },
+];
+const SITES = [
+  { name: '元宝', url: 'https://so.qq.com', color: '#10b981', short: '元', icon: 'icons/yuanbao.png' },
+  { name: '百度', url: 'https://www.baidu.com', color: '#3b82f6', short: '百', icon: 'icons/baidu.png' },
+  { name: 'Bing', url: 'https://www.bing.com', color: '#0ea5e9', short: 'B', icon: 'icons/bing.png' },
+  { name: '谷歌', url: 'https://www.google.com', color: '#fff', short: 'G', svg: '<svg viewBox="0 0 48 48" width="100%" height="100%"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>' },
+  { name: 'GitHub', url: 'https://github.com', color: '#24292f', short: 'GH', svg: '<svg viewBox="0 0 24 24" width="100%" height="100%"><path fill="#fff" d="M12 .3a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58v-2.23c-3.34.73-4.04-1.42-4.04-1.42-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.11 3.18.77.84 1.24 1.91 1.24 3.22 0 4.6-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58A12 12 0 0 0 12 .3z"/></svg>' },
+  { name: '设置', url: '/settings.html', color: '#6b7280', short: '设' },
+];
+
+function cfg() {
+  try {
+    const s = JSON.parse(localStorage.getItem('trawl-settings') || 'null');
+    if (s && s.engines && s.engines.length) return s;
+  } catch {}
+  return { engines: DEFAULT_ENGINES, defaultEngine: '元宝搜索' };
+}
+function engine() {
+  const s = cfg();
+  return s.engines.find(e => e.name === s.defaultEngine) || s.engines[0];
+}
+function resolve(q) {
+  q = q.trim();
+  if (!q) return '';
+  if (/^https?:\/\//i.test(q)) return q;
+  const host = q.split(/[\/:?#]/)[0];
+  const looksHost = q.startsWith('localhost') ||
+    /^\d{1,3}(\.\d{1,3}){3}(:\d+)?([\/?#]|$)/.test(q) ||
+    (host.includes('.') && !host.endsWith('.') && /^[a-z0-9.-]+$/i.test(host));
+  if (looksHost) return 'https://' + q;
+  const e = engine();
+  const v = encodeURIComponent(q);
+  if (e.template.includes('{query}')) return e.template.replace('{query}', v);
+  if (e.template.includes('%s')) return e.template.replace('%s', v);
+  return e.template + v;
+}
+
+// 搜索引擎真实图标：本地内置的用图片，网络受限的用官方品牌 SVG，杜绝远程请求导致的加载慢
+const ENGINE_ICONS = {
+  '元宝搜索': { icon: 'icons/yuanbao.png', color: '#10b981', ch: '元' },
+  '百度': { icon: 'icons/baidu.png', color: '#3b82f6', ch: '百' },
+  'Bing': { icon: 'icons/bing.png', color: '#0ea5e9', ch: 'B' },
+  'Google': { color: '#fff', ch: 'G', svg: '<svg viewBox="0 0 48 48" width="100%" height="100%"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>' },
+};
+function renderEngine() {
+  const s = cfg();
+  const sel = document.getElementById('engine-select');
+  sel.innerHTML = '';
+  for (const e of s.engines) {
+    const opt = document.createElement('option');
+    opt.value = e.name;
+    opt.textContent = e.name;
+    sel.appendChild(opt);
+  }
+  sel.value = s.defaultEngine;
+  const meta = ENGINE_ICONS[s.defaultEngine] || { ch: (s.defaultEngine || '搜').charAt(0), color: '#10b981' };
+  const icon = document.getElementById('engine-icon');
+  icon.innerHTML = '';
+  // 白底更适合彩色 logo；纯色兜底才用品牌色
+  icon.style.background = meta.svg ? '#fff' : 'transparent';
+  if (meta.icon) {
+    const img = document.createElement('img');
+    img.alt = ''; img.src = meta.icon;
+    img.onerror = () => { img.remove(); icon.style.background = meta.color; icon.textContent = meta.ch; };
+    icon.appendChild(img);
+  } else if (meta.svg) {
+    const wrap = document.createElement('div');
+    wrap.className = 'brand-icon';
+    wrap.innerHTML = meta.svg;
+    icon.appendChild(wrap);
+  } else {
+    icon.style.background = meta.color;
+    icon.textContent = meta.ch;
+  }
+}
+document.getElementById('engine-select').onchange = (e) => {
+  const s = cfg();
+  s.defaultEngine = e.target.value;
+  try { localStorage.setItem('trawl-settings', JSON.stringify(s)); } catch {}
+  invoke('save_settings', { settings: s }).catch(() => {});
+  renderEngine();
+};
+
+function renderShortcuts() {
+  const grid = document.getElementById('shortcut-grid');
+  grid.innerHTML = '';
+  for (const s of SITES) {
+    const el = document.createElement('div');
+    el.className = 'shortcut';
+    const ic = document.createElement('div');
+    ic.className = 'ic';
+    if (s.icon) {
+      // 本地真实图标，零网络请求
+      const img = document.createElement('img');
+      img.src = s.icon;
+      img.onerror = () => { img.remove(); ic.style.background = s.color; ic.textContent = s.short; };
+      ic.appendChild(img);
+    } else if (s.svg) {
+      // 官方品牌 SVG
+      const wrap = document.createElement('div');
+      wrap.className = 'brand-icon';
+      wrap.style.background = s.color;
+      wrap.innerHTML = s.svg;
+      ic.appendChild(wrap);
+    } else {
+      ic.style.background = s.color;
+      ic.textContent = s.short;
+    }
+    el.appendChild(ic);
+    el.appendChild(document.createTextNode(s.name));
+    el.onclick = () => { location.href = s.url; };
+    grid.appendChild(el);
+  }
+}
+
+/* ==================== 时钟 ==================== */
+function tickClock() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  document.getElementById('clock-time').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()];
+  document.getElementById('clock-date').textContent =
+    (now.getMonth() + 1) + ' 月 ' + now.getDate() + ' 日 · ' + week;
+}
+
+const input = document.getElementById('search-input');
+function go() {
+  const url = resolve(input.value);
+  if (url) location.href = url;
+}
+document.getElementById('send').onclick = go;
+input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+
+function applyTheme() {
+  try {
+    document.documentElement.dataset.theme = localStorage.getItem('trawl-theme') || 'light';
+    document.documentElement.dataset.accent = localStorage.getItem('trawl-accent') || 'green';
+  } catch {}
+}
+async function applyNewtabPrefs() {
+  // localStorage 与 chrome 共享，但刚改完设置时可能还没回写，这里以 Rust 侧为准
+  let s = cfg();
+  try {
+    const st = await invoke('initial_state');
+    if (st && st.settings) s = st.settings;
+  } catch {}
+  document.body.dataset.bg = s.newtabBg || 'plain';
+  if (s.showClock === false) document.getElementById('clock').style.display = 'none';
+  if (s.showShortcuts === false) document.getElementById('shortcuts').style.display = 'none';
+}
+applyTheme();
+applyNewtabPrefs();
+// 设置页改完立即生效：settings 保存在 chrome 侧广播 state，这里跟随刷新背景等偏好
+try {
+  window.__TAURI__.event.listen('state', () => { applyNewtabPrefs(); applyTheme(); });
+} catch {}
+renderEngine();
+renderShortcuts();
+tickClock();
+setInterval(tickClock, 1000 * 15);
+input.focus();
+</script>
+</body>
+</html>

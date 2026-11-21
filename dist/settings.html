@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-accent="green">
+<head>
+<meta charset="UTF-8">
+<title>设置 - Trawl</title>
+<style>
+:root {
+  --accent: #10b981; --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+  --bg: #f5f7f9; --panel: #ffffff; --border: #e6eaee; --border-strong: #d6dde3;
+  --text: #1f2937; --text-2: #5a6672; --text-3: #98a2ae;
+  --hover: #f1f5f7; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+}
+:root[data-theme="dark"] {
+  --bg: #15181c; --panel: #1e2228; --border: #2c323a; --border-strong: #3a424c;
+  --text: #e8ebef; --text-2: #a9b3be; --text-3: #76818d;
+  --hover: #272c33; --shadow: 0 8px 24px rgba(0,0,0,.28);
+}
+:root[data-accent="purple"] { --accent: #8b5cf6; }
+:root[data-accent="blue"]   { --accent: #3b82f6; }
+:root[data-accent="orange"] { --accent: #f59e0b; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; font-size: 13px;
+}
+svg { display: none; }
+.ic {
+  width: 17px; height: 17px; flex-shrink: 0; display: block;
+  stroke: currentColor; fill: none; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.app { display: flex; min-height: 100vh; }
+
+/* ---------- 左侧导航 ---------- */
+.sidebar {
+  width: 236px; flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 20px 12px 14px;
+  position: sticky; top: 0; height: 100vh;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 10px 16px; font-size: 15px; font-weight: 700;
+}
+.brand img { width: 24px; height: 24px; }
+.nav { display: flex; flex-direction: column; gap: 1px; overflow-y: auto; flex: 1; }
+.nav::-webkit-scrollbar { width: 6px; }
+.nav::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+.nav-sep { height: 1px; background: var(--border); margin: 9px 10px; }
+.nav-item {
+  display: flex; align-items: center; gap: 11px;
+  height: 34px; padding: 0 11px;
+  border-radius: 8px; color: var(--text-2);
+  cursor: pointer; font-size: 12.5px; white-space: nowrap;
+  transition: background .12s ease, color .12s ease;
+}
+.nav-item:hover { background: var(--hover); color: var(--text); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.nav-item.active .ic { stroke-width: 2; }
+.nav-item .ext-mark { margin-left: auto; color: var(--text-3); font-size: 11px; }
+.sidebar-foot { margin-top: 10px; padding: 8px 11px 0; font-size: 11px; color: var(--text-3); border-top: 1px solid var(--border); }
+
+/* ---------- 右侧内容 ---------- */
+.main { flex: 1; min-width: 0; padding: 28px 44px 64px; position: relative; }
+.back {
+  position: absolute; top: 22px; right: 32px;
+  display: flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--panel); color: var(--text-2);
+  font-family: inherit; font-size: 12px; cursor: pointer;
+}
+.back:hover { border-color: var(--accent); color: var(--accent); }
+.section { display: none; max-width: 860px; margin: 0 auto; }
+.section.active { display: block; }
+.head { margin-bottom: 20px; }
+.head h1 { font-size: 23px; font-weight: 700; letter-spacing: -.2px; }
+.head p { color: var(--text-3); font-size: 12.5px; margin-top: 6px; }
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: var(--shadow);
+  margin-bottom: 16px; overflow: hidden;
+}
+.card-title {
+  padding: 14px 18px 8px; font-size: 12px;
+  font-weight: 600; color: var(--text-3); letter-spacing: .4px;
+}
+.row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 18px; border-top: 1px solid var(--border);
+  min-height: 58px;
+}
+.card-title + .row, .card > .row:first-child, .row.first { border-top: none; }
+.row .info { flex: 1; min-width: 0; }
+.row .t { font-size: 13px; }
+.row .d { font-size: 11.5px; color: var(--text-3); margin-top: 3px; line-height: 1.55; }
+
+/* 开关 */
+.switch { position: relative; width: 38px; height: 21px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.slider {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: #cfd6dd; cursor: pointer;
+  transition: background .18s ease;
+}
+.slider::after {
+  content: ''; position: absolute; left: 2px; top: 2px;
+  width: 17px; height: 17px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .18s ease;
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::after { transform: translateX(17px); }
+.switch input:disabled + .slider { opacity: .45; cursor: not-allowed; }
+
+/* 分段选择 */
+.seg {
+  display: inline-flex; padding: 3px; gap: 2px;
+  background: var(--hover); border-radius: 9px; flex-shrink: 0;
+}
+.seg button {
+  border: none; background: transparent; color: var(--text-2);
+  height: 28px; padding: 0 14px; border-radius: 7px;
+  font-family: inherit; font-size: 12px; cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.seg button:hover { color: var(--text); }
+.seg button.on {
+  background: var(--panel); color: var(--text);
+  font-weight: 600; box-shadow: 0 1px 3px rgba(16,24,40,.10);
+}
+
+/* 主题卡片 */
+.theme-grid { display: flex; gap: 12px; padding: 4px 18px 14px; flex-wrap: wrap; }
+.theme-card {
+  width: 132px; padding: 8px; border-radius: 11px;
+  border: 1.5px solid var(--border); background: var(--panel);
+  color: var(--text-2); font-family: inherit; font-size: 12px;
+  cursor: pointer; display: flex; flex-direction: column; gap: 8px;
+  align-items: flex-start;
+}
+.theme-card:hover { border-color: var(--border-strong); }
+.theme-card.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.theme-card .preview {
+  width: 100%; height: 62px; border-radius: 7px;
+  border: 1px solid var(--border); overflow: hidden;
+  display: flex; flex-direction: column; padding: 6px;
+}
+.theme-card .preview.light { background: #f5f7f9; }
+.theme-card .preview.dark { background: #20242a; }
+.theme-card .preview.auto { background: linear-gradient(120deg, #f5f7f9 0 50%, #20242a 50% 100%); }
+.theme-card .preview i { display: block; height: 7px; border-radius: 3px; background: #d8dee4; margin-bottom: 5px; }
+.theme-card .preview i:first-child { width: 62%; background: var(--accent); }
+.theme-card .preview i:nth-child(2) { width: 88%; }
+.theme-card .preview i:nth-child(3) { width: 70%; }
+.theme-card .preview.dark i, .theme-card .preview.auto i { background: #3b424b; }
+.theme-card .preview.dark i:first-child, .theme-card .preview.auto i:first-child { background: var(--accent); }
+
+/* 强调色 / 背景 */
+.accent-row { display: flex; gap: 12px; padding: 4px 18px 16px; align-items: center; }
+.accent-dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid transparent; background: var(--c);
+  cursor: pointer; position: relative;
+}
+.accent-dot.active { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--c); }
+.bg-grid { display: flex; gap: 12px; padding: 4px 18px 16px; flex-wrap: wrap; }
+.bg-card {
+  width: 108px; height: 76px; border-radius: 11px;
+  border: 1.5px solid var(--border); background: var(--panel);
+  cursor: pointer; position: relative; overflow: hidden;
+  color: var(--text-2); font-family: inherit; font-size: 11.5px;
+}
+.bg-card span.sw { position: absolute; inset: 0; }
+.bg-card span.sw.plain { background: #f7faf8; }
+.bg-card span.sw.gray { background: #eceff3; }
+.bg-card span.sw.gradient { background: linear-gradient(165deg, #eaf7f0 0%, #e8f1fb 48%, #f5eefb 100%); }
+.bg-card span.sw.dark { background: #15181d; }
+.bg-card em {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  font-style: normal; font-size: 11px; text-align: center;
+  padding: 4px 0; background: rgba(255,255,255,.86); color: #3c4650;
+}
+.bg-card.dark em { background: rgba(21,24,29,.86); color: #cbd2da; }
+.bg-card.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* 搜索引擎 */
+.engine-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 18px; border-top: 1px solid var(--border);
+}
+.engine-row:first-child { border-top: none; }
+.engine-row input[type=radio] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+.engine-row .eng-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--hover); color: var(--accent);
+  font-weight: 700; font-size: 11px; flex-shrink: 0;
+}
+.engine-row .eng-icon img { width: 16px; height: 16px; object-fit: contain; }
+.engine-row .eng-name { font-size: 13px; width: 92px; flex-shrink: 0; }
+.engine-row .eng-url {
+  flex: 1; color: var(--text-3); font-size: 11px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  direction: rtl; text-align: left;
+}
+.eng-del {
+  border: none; background: transparent; color: var(--text-3);
+  width: 26px; height: 26px; border-radius: 7px;
+  cursor: pointer; font-size: 14px; flex-shrink: 0;
+}
+.eng-del:hover { background: rgba(224,83,61,.12); color: #e0533d; }
+.add-form {
+  display: flex; gap: 8px; padding: 14px 18px 16px;
+  border-top: 1px solid var(--border); background: var(--bg);
+}
+
+/* 删除浏览数据弹窗 */
+.cbd-chip {
+  border: 1px solid var(--border-strong); background: transparent; color: var(--text-2);
+  padding: 6px 14px; border-radius: 16px; font-size: 13px; cursor: pointer;
+}
+.cbd-chip:hover { border-color: var(--accent); }
+.cbd-chip.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cbd-item {
+  display: flex; align-items: center; gap: 10px; padding: 11px 0;
+  border-bottom: 1px solid var(--border); font-size: 13.5px; cursor: pointer;
+}
+.cbd-item:last-child { border-bottom: none; }
+.cbd-item span { flex: 0 0 auto; }
+.cbd-item em { font-style: normal; color: var(--text-3); font-size: 12px; margin-left: auto; text-align: right; }
+.add-form input {
+  height: 34px; border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--panel); color: var(--text); padding: 0 10px;
+  font-family: inherit; font-size: 12px; outline: none; min-width: 0;
+}
+.add-form input:focus { border-color: var(--accent); }
+#eng-name { width: 120px; flex-shrink: 0; }
+#eng-template { flex: 1; }
+.btn-primary, .btn-ghost {
+  height: 34px; padding: 0 14px; border-radius: 8px;
+  font-family: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.btn-primary { border: none; background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { border: 1px solid var(--border-strong); background: transparent; color: var(--text-2); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-ghost.armed { border-color: #e0533d; color: #e0533d; background: rgba(224,83,61,.07); }
+select {
+  height: 32px; border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--panel); color: var(--text); padding: 0 10px;
+  font-family: inherit; font-size: 12px; outline: none;
+}
+.text-input {
+  height: 32px; width: 260px; border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--panel); color: var(--text); padding: 0 10px;
+  font-family: inherit; font-size: 12px; outline: none;
+}
+.text-input:focus { border-color: var(--accent); }
+/* 快捷键表 */
+.kbd-table { padding: 2px 18px 12px; }.kbd-line {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.kbd-line:first-child { border-top: none; }
+.kbd-line .lbl { flex: 1; }
+kbd {
+  font-family: inherit; font-size: 11px; color: var(--text-2);
+  background: var(--hover); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 6px;
+  padding: 2px 7px; margin-left: 4px; white-space: nowrap;
+}
+/* 下载记录 */
+.card-title-row { display: flex; align-items: center; justify-content: space-between; padding-right: 14px; }
+.btn-link {
+  border: none; background: none; color: var(--text-3);
+  font-family: inherit; font-size: 11.5px; cursor: pointer; padding: 4px 6px; border-radius: 6px;
+}
+.btn-link:hover { color: var(--accent); background: var(--accent-soft); }
+.btn-link.armed { color: #e0533d; background: rgba(224,83,61,.1); }
+.empty-line { padding: 18px; color: var(--text-3); font-size: 12px; text-align: center; }
+.dl-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-top: 1px solid var(--border);
+}
+.dl-item:first-child { border-top: none; }
+.dl-ic {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+}
+.dl-ic .ic { width: 15px; height: 15px; }
+.dl-main { flex: 1; min-width: 0; }
+.dl-name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+.dl-state { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; }
+.dl-state.ok { color: var(--accent); }
+.dl-state.bad { color: #ef4444; }
+.kv {
+  font-size: 11.5px; color: var(--text-3);
+  background: var(--hover); padding: 3px 9px; border-radius: 999px; flex-shrink: 0;
+}
+.about-logo { width: 46px; height: 46px; border-radius: 13px; }
+.about-line { display: flex; align-items: center; gap: 14px; padding: 18px; }
+.about-line h2 { font-size: 16px; }
+.about-line p { color: var(--text-3); font-size: 11.5px; margin-top: 5px; line-height: 1.7; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 11px; font-weight: 600;
+}
+.tip {
+  margin: 0 18px 16px; padding: 10px 12px;
+  background: var(--hover); border-radius: 9px;
+  color: var(--text-3); font-size: 11.5px; line-height: 1.6;
+}
+/* 密码管理 */
+.pw-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 18px; border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.pw-row:first-child { border-top: none; }
+.pw-row .pw-main { flex: 1; min-width: 0; }
+.pw-row .pw-site { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pw-row .pw-user { color: var(--text-3); font-size: 11.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pw-row .pw-pass {
+  color: var(--text-2); font-family: ui-monospace, Consolas, monospace;
+  max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pw-row button {
+  border: none; background: transparent; color: var(--text-3);
+  font-family: inherit; font-size: 11.5px; cursor: pointer;
+  padding: 4px 8px; border-radius: 6px; flex-shrink: 0;
+}
+.pw-row button:hover { color: var(--accent); background: var(--accent-soft); }
+.pw-row button.pw-del:hover { color: #e0533d; background: rgba(224,83,61,.1); }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-autofill" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 10h4M7 14h2"/><circle cx="16.5" cy="12.5" r="2"/><path d="M13.6 17c.4-1.3 1.5-2 2.9-2s2.5.7 2.9 2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3l1.7 4.6L18.5 9.5l-4.8 1.9L12 16l-1.7-4.6L5.5 9.5l4.8-1.9z"/><path d="M18.5 16l.8 2.1 2.2.9-2.2.9-.8 2.1-.8-2.1-2.2-.9 2.2-.9z"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.2 0 1.8-.9 1.8-1.9 0-1.9 1.2-2.6 2.6-2.6H18a3 3 0 0 0 3-3A9 9 0 0 0 12 3z"/><circle cx="8" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.8" cy="10" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-perf" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-appearance" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" opacity=".18"/><path d="M12 3v18"/></symbol>
+  <symbol id="i-tabs" viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="14" rx="2.2"/><path d="M7 3h12a2 2 0 0 1 2 2v11"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7.5 14h9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
+  <symbol id="i-browser" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/><circle cx="6.5" cy="6.5" r=".6" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 5h9l-1.5 3L15 11H6"/></symbol>
+  <symbol id="i-lang" viewBox="0 0 24 24"><path d="M3 5.5h8.5M7.2 3.5v2c0 3.6-1.7 6.4-4.2 8.2"/><path d="M4.6 9.3c1.5 2.6 3.6 4 6.4 4.9"/><path d="M12.6 20.5l4-10.5 4 10.5"/><path d="M14.2 16.7h4.9"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-access" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5h14M12 8.5V14M12 14l-2.5 6M12 14l2.5 6"/></symbol>
+  <symbol id="i-system" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.6 12a8.4 8.4 0 1 0 2.6-6.1"/><path d="M3.3 4.7v4.2H7.5"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M10 3.5h4v2.1a1.8 1.8 0 1 0 3.6 0V3.5H21v4.9h-2.1a1.8 1.8 0 1 0 0 3.6H21v7.5h-5.2v-2.1a1.8 1.8 0 1 0-3.6 0v2.1H3V12h2.1a1.8 1.8 0 1 0 0-3.6H3V3.5h7z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><img src="logo/trawl-icon.svg" alt=""><span>设置</span></div>
+    <nav class="nav" id="nav">
+      <div class="nav-item" data-sec="autofill"><svg class="ic"><use href="#i-autofill"/></svg>自动填充和密码</div>
+      <div class="nav-item" data-sec="privacy"><svg class="ic"><use href="#i-shield"/></svg>隐私与安全</div>
+      <div class="nav-item" data-sec="personalize"><svg class="ic"><use href="#i-palette"/></svg>个性化</div>
+      <div class="nav-item" data-sec="performance"><svg class="ic"><use href="#i-perf"/></svg>性能</div>
+      <div class="nav-item active" data-sec="appearance"><svg class="ic"><use href="#i-appearance"/></svg>外观</div>
+      <div class="nav-item" data-sec="tabs"><svg class="ic"><use href="#i-tabs"/></svg>标签和标签组</div>
+      <div class="nav-item" data-sec="shortcuts"><svg class="ic"><use href="#i-keyboard"/></svg>快捷键与手势</div>
+      <div class="nav-item" data-sec="search"><svg class="ic"><use href="#i-search"/></svg>搜索引擎</div>
+      <div class="nav-item" data-sec="defaultbrowser"><svg class="ic"><use href="#i-browser"/></svg>默认浏览器</div>
+      <div class="nav-item" data-sec="startup"><svg class="ic"><use href="#i-flag"/></svg>起始页面</div>
+      <div class="nav-item" data-sec="language"><svg class="ic"><use href="#i-lang"/></svg>语言</div>
+      <div class="nav-item" data-sec="downloads"><svg class="ic"><use href="#i-download"/></svg>下载内容</div>
+      <div class="nav-item" data-sec="accessibility"><svg class="ic"><use href="#i-access"/></svg>无障碍</div>
+      <div class="nav-item" data-sec="system"><svg class="ic"><use href="#i-system"/></svg>系统</div>
+      <div class="nav-item" data-sec="reset"><svg class="ic"><use href="#i-reset"/></svg>重置设置</div>
+      <div class="nav-sep"></div>
+      <div class="nav-item" data-sec="extensions"><svg class="ic"><use href="#i-ext"/></svg>扩展程序<span class="ext-mark">↗</span></div>
+      <div class="nav-item" data-sec="about"><svg class="ic"><use href="#i-info"/></svg>关于 Trawl</div>
+    </nav>
+    <div class="sidebar-foot">Trawl Browser · v0.7.13</div>
+  </aside>
+
+  <main class="main">
+    <button class="back" onclick="history.back()"><svg class="ic"><use href="#i-back"/></svg>返回</button>
+
+    <!-- 自动填充和密码 -->
+    <section class="section" id="sec-autofill">
+      <div class="head"><h1>自动填充和密码</h1><p>控制地址栏补全与登录信息保存。所有数据都只存在这台电脑上。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">地址栏自动补全</div><div class="d">点击地址栏时立刻给出历史与收藏建议；关闭后只有开始输入才显示。</div></div>
+          <label class="switch"><input type="checkbox" id="set-autocomplete"><span class="slider"></span></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">本机密码管理</div>
+        <div class="row first">
+          <div class="info"><div class="t">密码管理工具</div><div class="d">按站点管理帐号密码：搜索、添加、修改、安全检查；查看详情前需要通过 Windows Hello（本机密码 / PIN / 指纹）验证。</div></div>
+          <button class="btn-ghost" id="btn-open-passwords">打开密码管理工具</button>
+        </div>
+        <div id="pw-list"><div class="empty-line">还没有保存密码。可从浏览器导出的 CSV 导入，或在密码管理工具里添加。</div></div>
+        <div class="row">
+          <div class="info"><div class="t">从 CSV 导入</div><div class="d">在 Chrome / Edge 的密码管理器里「导出密码」得到 CSV 文件，填入完整路径导入（自动识别表头与列）。</div></div>
+          <button class="btn-ghost" id="btn-pw-import">导入 CSV</button>
+        </div>
+        <div class="add-form" id="pw-import-form" style="display:none">
+          <input type="text" id="pw-csv-path" placeholder="CSV 文件完整路径，例如 D:\keys\passwords.csv" style="flex:1">
+          <button class="btn-primary" id="pw-import-ok">导入</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">加密方式</div><div class="d">密码用 Windows DPAPI（当前用户作用域）加密后保存，仅本机当前 Windows 账户可解密，不经过任何服务器。</div></div>
+          <span class="kv">DPAPI</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 隐私与安全 -->
+    <section class="section" id="sec-privacy">
+      <div class="head"><h1>隐私与安全</h1><p>浏览数据的保存与清理。所有数据都只存在这台电脑上，不经过任何服务器。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">无痕窗口</div><div class="d">打开一个不写入历史记录的独立窗口，适合临时查资料。</div></div>
+          <button class="btn-ghost" id="btn-incognito">打开无痕窗口</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">删除浏览数据</div><div class="d">删除历史记录、Cookie、缓存内容及其他数据，可选择时间范围。</div></div>
+          <button class="btn-primary" id="btn-clear-data">删除浏览数据…</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">下载记录</div><div class="d">只清空列表，不会删除已经下载到硬盘的文件。</div></div>
+          <button class="btn-ghost" id="btn-clear-dl-top">清空记录</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">登录与 Cookie</div><div class="d">账号与 Cookie 保存在本机 WebView2 数据目录，关闭浏览器后仍会保留，不经过任何服务器。</div></div>
+          <button class="btn-ghost" id="btn-open-data">打开目录</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">数据安全与隐私说明</div>
+        <div class="row first">
+          <div class="info"><div class="t">安全与隐私</div><div class="d">Trawl 高度重视并尊重用户数据安全和隐私保护。浏览数据与账号信息只保存在本机。</div></div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">数据仅存本机</div><div class="d">书签、历史、密码、Cookie 等全部保存在这台电脑的本地目录，卸载浏览器也不会被上传。</div></div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">数据独立且不用于训练</div><div class="d">你的信息不会被用于训练任何模型，也不会与第三方共享浏览记录。</div></div>
+        </div>
+      </div>
+
+      <!-- 删除浏览数据弹窗（Edge 式） -->
+      <div id="cbd-mask" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:1000;"></div>
+      <div id="cbd-dialog" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:520px; max-width:92vw; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 18px 60px rgba(0,0,0,.28); z-index:1001; overflow:hidden;">
+        <div style="padding:20px 24px 0; font-size:19px; font-weight:600;">删除浏览数据</div>
+        <div style="padding:14px 24px 0; font-size:13px; color:var(--text-2);">立即删除</div>
+        <div id="cbd-chips" style="display:flex; gap:8px; flex-wrap:wrap; padding:10px 24px 0;">
+          <button class="cbd-chip" data-hours="1">过去 1 小时</button>
+          <button class="cbd-chip sel" data-hours="24">过去 24 小时</button>
+          <button class="cbd-chip" data-hours="168">过去 7 天</button>
+          <button class="cbd-chip" data-hours="0">全部时间</button>
+        </div>
+        <div style="margin:16px 20px 0; border:1px solid var(--border); border-radius:10px; background:var(--bg); padding:4px 16px;">
+          <label class="cbd-item"><input type="checkbox" id="cbd-history" checked><span>浏览记录</span><em id="cbd-history-count"></em></label>
+          <label class="cbd-item"><input type="checkbox" id="cbd-cookies"><span>Cookie 及其他网站数据</span><em>注意：删除后需要重新登录各网站</em></label>
+          <label class="cbd-item"><input type="checkbox" id="cbd-cache"><span>缓存的图片和文件</span></label>
+          <label class="cbd-item"><input type="checkbox" id="cbd-downloads"><span>下载记录</span><em>不会删除硬盘上的文件</em></label>
+        </div>
+        <div id="cbd-result" style="display:none; padding:12px 24px 0; font-size:13px; color:var(--accent);"></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; padding:18px 24px 20px;">
+          <button class="btn-ghost" id="cbd-cancel" style="padding:8px 18px;">取消</button>
+          <button class="btn-primary" id="cbd-ok" style="padding:8px 18px;">删除数据</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 个性化 -->
+    <section class="section" id="sec-personalize">
+      <div class="head"><h1>个性化</h1><p>主题、强调色与新标签页的外观。</p></div>
+      <div class="card">
+        <div class="card-title">主题</div>
+        <div class="theme-grid">
+          <button class="theme-card active" data-theme="light"><span class="preview light"><i></i><i></i><i></i></span>浅色</button>
+          <button class="theme-card" data-theme="dark"><span class="preview dark"><i></i><i></i><i></i></span>深色</button>
+          <button class="theme-card" data-theme="auto"><span class="preview auto"><i></i><i></i><i></i></span>跟随系统</button>
+        </div>
+        <div class="card-title">强调色</div>
+        <div class="accent-row">
+          <button class="accent-dot active" data-accent="green" style="--c:#10b981" title="青绿"></button>
+          <button class="accent-dot" data-accent="blue" style="--c:#3b82f6" title="蓝"></button>
+          <button class="accent-dot" data-accent="purple" style="--c:#8b5cf6" title="紫"></button>
+          <button class="accent-dot" data-accent="orange" style="--c:#f59e0b" title="橙"></button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">新标签页背景</div>
+        <div class="bg-grid" id="bg-grid">
+          <button class="bg-card" data-v="plain"><span class="sw plain"></span><em>纯白</em></button>
+          <button class="bg-card" data-v="gray"><span class="sw gray"></span><em>浅灰</em></button>
+          <button class="bg-card" data-v="gradient"><span class="sw gradient"></span><em>渐变</em></button>
+          <button class="bg-card dark" data-v="dark"><span class="sw dark"></span><em>暗色</em></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 性能 -->
+    <section class="section" id="sec-performance">
+      <div class="head"><h1>性能</h1><p>标签页的创建方式与内存占用。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">标签页按需加载</div><div class="d">只有被激活的标签才创建渲染进程，恢复几十个标签时启动明显更快。已开启。</div></div>
+          <span class="kv">已开启</span>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">关闭即释放</div><div class="d">关闭标签后立刻销毁对应 webview，不占用后台内存。已开启。</div></div>
+          <span class="kv">已开启</span>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">渲染内核</div><div class="d">Microsoft Edge WebView2（Chromium），硬件加速由系统负责。</div></div>
+          <span class="kv">Chromium</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">应用数据目录</div><div class="d">标签状态、设置、历史与缓存都在这里；目录越大启动越慢时可以先清理缓存。</div></div>
+          <button class="btn-ghost" id="btn-open-data-p">打开目录</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 外观 -->
+    <section class="section active" id="sec-appearance">
+      <div class="head"><h1>外观</h1><p>界面密度、字号与工具栏上显示哪些按钮。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">界面密度</div><div class="d">紧凑模式会让标签条与工具栏各矮 4~6px，一屏能看到更多内容。</div></div>
+          <div class="seg" data-key="density">
+            <button data-v="standard">标准</button>
+            <button data-v="compact">紧凑</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">显示书签栏</div><div class="d">在工具栏下方常驻显示书签按钮（Ctrl+Shift+B 打开书签管理）。</div></div>
+          <label class="switch"><input type="checkbox" id="set-bmbar"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">显示「标签列表」按钮</div><div class="d">标签栏右侧的四宫格按钮，点击打开标签管理面板。</div></div>
+          <label class="switch"><input type="checkbox" id="set-tablist"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">显示「扩展程序」按钮</div><div class="d">工具栏右侧的拼图按钮。也可以直接右键工具栏按钮把它隐藏。</div></div>
+          <label class="switch"><input type="checkbox" id="set-btn-ext"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">显示「历史记录」按钮</div><div class="d">工具栏右侧的时钟按钮，点开历史面板。</div></div>
+          <label class="switch"><input type="checkbox" id="set-btn-history"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">显示「下载」按钮</div><div class="d">工具栏右侧的下载入口，下载进行中会显示数量徽标。</div></div>
+          <label class="switch"><input type="checkbox" id="set-btn-dl"><span class="slider"></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 标签和标签组 -->
+    <section class="section" id="sec-tabs">
+      <div class="head"><h1>标签和标签组</h1><p>标签栏方向、新标签位置与关闭后的行为。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">标签栏布局</div><div class="d">顶部横排是夸克式默认布局；左侧竖排更适合同时开几十个标签。</div></div>
+          <div class="seg" data-key="verticalTabs" data-type="bool">
+            <button data-v="false">顶部</button>
+            <button data-v="true">左侧竖排</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">新建标签页位置</div><div class="d">决定 Ctrl+T 打开的新标签插在哪里。</div></div>
+          <div class="seg" data-key="newTabPosition">
+            <button data-v="end">全部末尾</button>
+            <button data-v="after">当前标签之后</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">关闭标签后切换到</div><div class="d">和 Chrome 一样默认切到右侧标签；也可以切左侧或直接开新标签页。</div></div>
+          <div class="seg" data-key="closeTabBehavior">
+            <button data-v="right">右侧标签</button>
+            <button data-v="left">左侧标签</button>
+            <button data-v="newtab">新标签页</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">标签分组</div><div class="d">在左上角 Logo 的分组面板里新建分组、整理标签、一键关闭整组；这里可直接打开标签列表。</div></div>
+          <button class="btn-ghost" id="btn-open-groups">打开标签列表</button>
+        </div>
+      </div>
+      <div class="tip">标签列表面板支持搜索、逐个关闭与全部关闭；分组面板在左上角 Logo 里。</div>
+    </section>
+
+    <!-- 快捷键与手势 -->
+    <section class="section" id="sec-shortcuts">
+      <div class="head"><h1>快捷键与手势</h1><p>窗口获得焦点时生效，不会抢占其它程序的按键。</p></div>
+      <div class="card">
+        <div class="card-title">标签页与导航</div>
+        <div class="kbd-table" id="kbd-nav"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">页面与工具</div>
+        <div class="kbd-table" id="kbd-page"></div>
+      </div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">鼠标手势</div><div class="d">按住右键画出 ← / → / ↑ 快速后退、前进与回到顶部。当前版本暂未开启。</div></div>
+          <span class="kv">未启用</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 搜索引擎 -->
+    <section class="section" id="sec-search">
+      <div class="head"><h1>搜索引擎</h1><p>选择默认引擎，或添加自定义搜索网址。</p></div>
+      <div class="card">
+        <div class="card-title">已添加的引擎（点击左侧圆点设为默认）</div>
+        <div id="engine-list"></div>
+        <div class="add-form">
+          <input type="text" id="eng-name" placeholder="引擎名称">
+          <input type="text" id="eng-template" placeholder="网址模板，例如 https://example.com/s?q={query}">
+          <button class="btn-primary" id="eng-add">添加引擎</button>
+        </div>
+      </div>
+      <div class="tip">地址栏里输入关键词时用的是默认引擎；新标签页搜索框可以临时切换引擎。</div>
+    </section>
+
+    <!-- 默认浏览器 -->
+    <section class="section" id="sec-defaultbrowser">
+      <div class="head"><h1>默认浏览器</h1><p>让系统里的链接直接交给 Trawl 打开。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">当前状态</div><div class="d">Windows 10/11 不允许程序自行改默认浏览器，需要你在系统设置里手动指定。</div></div>
+          <span class="kv">需手动设置</span>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">打开系统默认应用设置</div><div class="d">在「Web 浏览器」一栏选择 Trawl。</div></div>
+          <button class="btn-ghost" id="btn-default-apps">打开设置</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 起始页面 -->
+    <section class="section" id="sec-startup">
+      <div class="head"><h1>起始页面</h1><p>启动时打开什么，以及新标签页显示什么。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">启动时</div><div class="d">恢复上次关闭时的标签页，或每次只开一个空白新标签页。</div></div>
+          <div class="seg" data-key="startup">
+            <button data-v="restore">恢复上次</button>
+            <button data-v="newtab">新标签页</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">主页按钮地址</div><div class="d">工具栏房子按钮打开这个地址，支持 trawl://newtab、trawl://settings 或任意网址。</div></div>
+          <input class="text-input" id="set-homepage" placeholder="trawl://newtab">
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">新标签页打开内容</div><div class="d">内页包含时钟、搜索框与常用站点；也可以直接进入元宝搜索。</div></div>
+          <select id="set-newtab"><option value="internal">内页（时钟 + 搜索）</option><option value="yuanbao">元宝搜索</option></select>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">显示时钟</div><div class="d">在搜索框上方显示当前时间与日期。</div></div>
+          <label class="switch"><input type="checkbox" id="set-clock"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">显示常用网站</div><div class="d">在搜索框下方显示常用站点快捷入口。</div></div>
+          <label class="switch"><input type="checkbox" id="set-shortcuts"><span class="slider"></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 语言 -->
+    <section class="section" id="sec-language">
+      <div class="head"><h1>语言</h1><p>界面语言与网页的语言偏好。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">界面语言</div><div class="d">当前版本提供简体中文界面。</div></div>
+          <select id="set-lang"><option value="zh-CN">简体中文</option></select>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">翻译默认目标语言</div><div class="d">地址栏翻译按钮默认翻成这个语言（页内双语翻译）。</div></div>
+          <select id="set-translate-lang">
+            <option value="zh">中文</option>
+            <option value="en">英文</option>
+            <option value="ja">日文</option>
+            <option value="ko">韩文</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- 下载内容 -->
+    <section class="section" id="sec-downloads">
+      <div class="head"><h1>下载内容</h1><p>下载任务的保存位置与历史记录。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">下载位置</div><div class="d">文件默认保存到系统「下载」文件夹。</div></div>
+          <button class="btn-ghost" id="btn-open-dl">打开文件夹</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">下载提示</div><div class="d">开始与完成时在工具栏下载按钮上实时显示数量与状态。</div></div>
+          <span class="kv">已开启</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title-row">
+          <span class="card-title">下载记录</span>
+          <button class="btn-link" id="btn-clear-dl">清空记录</button>
+        </div>
+        <div id="dl-list"><div class="empty-line">暂无下载记录</div></div>
+      </div>
+    </section>
+
+    <!-- 无障碍 -->
+    <section class="section" id="sec-accessibility">
+      <div class="head"><h1>无障碍</h1><p>让界面更适合自己看。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">界面字号</div><div class="d">放大标签标题与地址栏文字，不影响网页内容。</div></div>
+          <div class="seg" data-key="fontSize" data-type="num">
+            <button data-v="90">小</button>
+            <button data-v="100">标准</button>
+            <button data-v="110">大</button>
+            <button data-v="120">特大</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">减少动效</div><div class="d">关闭面板、标签的过渡动画，缓解视觉疲劳。</div></div>
+          <label class="switch"><input type="checkbox" id="set-motion"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">高对比度</div><div class="d">加深边框与次要文字颜色，弱视用户更容易分辨。</div></div>
+          <label class="switch"><input type="checkbox" id="set-contrast"><span class="slider"></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 系统 -->
+    <section class="section" id="sec-system">
+      <div class="head"><h1>系统</h1><p>开机启动与本机数据位置。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">开机自动启动</div><div class="d">登录 Windows 后自动打开 Trawl（写入当前用户的启动项）。</div></div>
+          <label class="switch"><input type="checkbox" id="set-autostart"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">应用数据目录</div><div class="d">标签页状态、书签、历史、设置与扩展清单都在这里。</div></div>
+          <button class="btn-ghost" id="btn-open-data-s">打开目录</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">退出时保存会话</div><div class="d">关闭窗口时自动记录当前标签，下次启动按「起始页面」的设置恢复。</div></div>
+          <span class="kv">已开启</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 重置设置 -->
+    <section class="section" id="sec-reset">
+      <div class="head"><h1>重置设置</h1><p>把全部选项恢复到出厂状态，不会删除书签、历史与标签页。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">恢复默认设置</div><div class="d">主题回到浅色、强调色回到青绿、界面密度回到标准，所有开关恢复初值。</div></div>
+          <button class="btn-ghost" id="btn-reset">重置设置</button>
+        </div>
+      </div>
+      <div class="tip">如果只想改某一项，回到对应分类调整即可，无需整体重置。</div>
+    </section>
+
+    <!-- 扩展程序 -->
+    <section class="section" id="sec-extensions">
+      <div class="head"><h1>扩展程序</h1><p>管理内置插件与本地扩展，或查看扩展占用的快捷键。</p></div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">已启用的扩展</div><div class="d">内置插件与本地扩展的统一管理入口，可配置、启停与移除。</div></div>
+          <span class="kv" id="ext-count">—</span>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">打开扩展程序页</div><div class="d">在新标签页查看全部扩展、开发者模式与快捷键。</div></div>
+          <button class="btn-primary" id="btn-open-ext">打开</button>
+        </div>
+      </div>
+      <div class="tip">地址栏右侧的拼图按钮也可以随时打开扩展程序页。</div>
+    </section>
+
+    <!-- 关于 -->
+    <section class="section" id="sec-about">
+      <div class="head"><h1>关于 Trawl</h1><p>版本信息与产品介绍。</p></div>
+      <div class="card">
+        <div class="about-line">
+          <img class="about-logo" src="logo/trawl-icon.svg" alt="">
+          <div>
+            <h2>Trawl <span class="badge">v0.7.13</span></h2>
+            <p>基于 Tauri 2 + WebView2。<br>把浏览器做薄，把搜索做快。Less browser. More search.<br>Trawl 取意「拖网」——一张网撒过所有搜索引擎，捞回全部结果再筛。</p>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row first">
+          <div class="info"><div class="t">渲染内核</div><div class="d">Microsoft Edge WebView2（Chromium）</div></div>
+          <span class="kv">Chromium</span>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">应用数据目录</div><div class="d">标签页状态、书签、历史、设置都保存在本机。</div></div>
+          <button class="btn-ghost" id="btn-open-data2">打开目录</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">下载目录</div><div class="d">系统「下载」文件夹，可在下载页直接打开。</div></div>
+          <button class="btn-ghost" id="btn-open-dl2">打开目录</button>
+        </div>
+        <div class="row">
+          <div class="info"><div class="t">快捷键</div><div class="d">完整列表见左侧「快捷键与手势」。</div></div>
+          <button class="btn-ghost" id="btn-goto-kbd">查看</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+let S = null;
+function report(msg) { try { window.__TAURI__.core.invoke('debug_msg', { msg }); } catch {} }
+
+/* 默认值：老配置文件里没有的字段补齐，避免保存时被后端默认值覆盖 */
+const DEFAULTS = {
+  theme: 'light', accent: 'green', newtab: 'internal', newtabBg: 'plain',
+  density: 'standard', newTabPosition: 'end', startup: 'restore',
+  closeTabBehavior: 'right', homepage: 'trawl://newtab', fontSize: 100,
+  autocomplete: true, reduceMotion: false, highContrast: false, autostart: false,
+  showBookmarksBar: true, showClock: true, showShortcuts: true,
+  showTablistBtn: true, verticalTabs: false, autoHideSidebar: false,
+  showExtBtn: true, showHistoryBtn: true, showDlBtn: true,
+};
+function withDefaults(raw) {
+  const s = Object.assign({}, DEFAULTS, raw || {});
+  if (!s.engines || !s.engines.length) {
+    s.engines = [
+      { name: '元宝搜索', template: 'https://so.qq.com/?query={query}' },
+      { name: '百度', template: 'https://www.baidu.com/s?wd={query}' },
+      { name: 'Bing', template: 'https://www.bing.com/search?q={query}' },
+      { name: 'Google', template: 'https://www.google.com/search?q={query}' },
+    ];
+    s.defaultEngine = s.defaultEngine || '元宝搜索';
+  }
+  return s;
+}
+
+function resolvedTheme() {
+  const t = S.theme || 'light';
+  if (t === 'auto') {
+    try { return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch { return 'light'; }
+  }
+  return t;
+}
+function applyTheme() {
+  document.documentElement.dataset.theme = resolvedTheme();
+  document.documentElement.dataset.accent = S.accent || 'green';
+}
+
+function paintChoice() {
+  document.querySelectorAll('.theme-card').forEach(b => b.classList.toggle('active', b.dataset.theme === (S.theme || 'light')));
+  document.querySelectorAll('.accent-dot').forEach(b => b.classList.toggle('active', b.dataset.accent === (S.accent || 'green')));
+  document.querySelectorAll('#bg-grid .bg-card').forEach(b => b.classList.toggle('active', b.dataset.v === (S.newtabBg || 'plain')));
+  document.querySelectorAll('.seg').forEach(seg => {
+    const key = seg.dataset.key;
+    const type = seg.dataset.type;
+    const cur = type === 'bool' ? String(!!S[key]) : String(S[key]);
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === cur));
+  });
+}
+
+async function load() {
+  let boot = null;
+  try { boot = await window.__TAURI__.core.invoke('initial_state'); } catch (e) { report('initial_state error: ' + e); }
+  if (boot && boot.settings) S = boot.settings;
+  if (!S) {
+    try { S = JSON.parse(localStorage.getItem('trawl-settings') || 'null'); } catch { S = null; }
+  }
+  S = withDefaults(S);
+
+  applyTheme();
+  paintChoice();
+  const $ = (id) => document.getElementById(id);
+  $('set-newtab').value = S.newtab || 'internal';
+  $('set-bmbar').checked = S.showBookmarksBar !== false;
+  $('set-clock').checked = S.showClock !== false;
+  $('set-shortcuts').checked = S.showShortcuts !== false;
+  $('set-tablist').checked = S.showTablistBtn !== false;
+  $('set-autocomplete').checked = S.autocomplete !== false;
+  $('set-motion').checked = !!S.reduceMotion;
+  $('set-contrast').checked = !!S.highContrast;
+  $('set-autostart').checked = !!S.autostart;
+  $('set-homepage').value = S.homepage || 'trawl://newtab';
+  $('set-btn-ext').checked = S.showExtBtn !== false;
+  $('set-btn-history').checked = S.showHistoryBtn !== false;
+  $('set-btn-dl').checked = S.showDlBtn !== false;
+  // 翻译默认目标语言以「网页翻译」插件的配置为准（不再走 localStorage）
+  try {
+    const exts = await window.__TAURI__.core.invoke('get_extensions');
+    const tr = exts.find(x => x.id === 'trawl-translate');
+    $('set-translate-lang').value = (tr && tr.cfg && tr.cfg.target) || 'zh';
+  } catch { $('set-translate-lang').value = 'zh'; }
+  renderEngines();
+  renderShortcuts();
+  fillAiEngine();
+  checkExtensions();
+  renderPwList();
+}
+
+function persist() {
+  try { localStorage.setItem('trawl-settings', JSON.stringify(S)); } catch {}
+  try { localStorage.setItem('trawl-theme', resolvedTheme()); localStorage.setItem('trawl-accent', S.accent || 'green'); } catch {}
+  try { window.__TAURI__.core.invoke('save_settings', { settings: S }); } catch (e) { report('save_settings error: ' + e); }
+}
+
+/* ---------- AI 引擎下拉 ---------- */
+function fillAiEngine() {
+  const sel = document.getElementById('set-ai-engine');
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (const e of S.engines) {
+    const o = document.createElement('option');
+    o.value = e.name; o.textContent = e.name;
+    sel.appendChild(o);
+  }
+  sel.value = S.defaultEngine || (S.engines[0] && S.engines[0].name) || '';
+  sel.onchange = () => { S.defaultEngine = sel.value; persist(); renderEngines(); };
+}
+
+/* ---------- 搜索引擎 ---------- */
+const ENGINE_ICONS = {
+  '元宝搜索': 'icons/yuanbao.png', '百度': 'icons/baidu.png', 'Bing': 'icons/bing.png',
+};
+function renderEngines() {
+  const list = document.getElementById('engine-list');
+  list.innerHTML = '';
+  for (const eng of S.engines) {
+    const row = document.createElement('div');
+    row.className = 'engine-row';
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'def';
+    radio.checked = eng.name === S.defaultEngine;
+    radio.onchange = () => {
+      S.defaultEngine = eng.name; persist();
+      const ai = document.getElementById('set-ai-engine');
+      if (ai) ai.value = eng.name;
+    };
+    const icon = document.createElement('span');
+    icon.className = 'eng-icon';
+    if (ENGINE_ICONS[eng.name]) {
+      const img = document.createElement('img');
+      img.src = ENGINE_ICONS[eng.name];
+      img.onerror = () => { icon.textContent = eng.name.charAt(0); };
+      icon.appendChild(img);
+    } else {
+      icon.textContent = eng.name.charAt(0);
+    }
+    const name = document.createElement('span');
+    name.className = 'eng-name'; name.textContent = eng.name;
+    const url = document.createElement('span');
+    url.className = 'eng-url'; url.textContent = eng.template;
+    const del = document.createElement('button');
+    del.className = 'eng-del'; del.textContent = '✕'; del.title = '删除引擎';
+    del.onclick = () => {
+      if (S.engines.length <= 1) return;
+      S.engines = S.engines.filter(x => x !== eng);
+      if (S.defaultEngine === eng.name) S.defaultEngine = S.engines[0]?.name || '';
+      persist(); renderEngines(); fillAiEngine();
+    };
+    row.appendChild(radio); row.appendChild(icon); row.appendChild(name); row.appendChild(url); row.appendChild(del);
+    list.appendChild(row);
+  }
+}
+
+/* ---------- 快捷键 ---------- */
+const KB_NAV = [
+  ['新建标签页', ['Ctrl', 'T']],
+  ['关闭标签页', ['Ctrl', 'W']],
+  ['聚焦地址栏', ['Ctrl', 'L']],
+  ['历史记录', ['Ctrl', 'H']],
+  ['收藏当前页', ['Ctrl', 'D']],
+  ['书签管理', ['Ctrl', 'Shift', 'B']],
+  ['下载内容', ['Ctrl', 'J']],
+  ['扩展程序', ['Ctrl', 'Shift', 'E']],
+  ['后退 / 前进', ['Alt', '← / →']],
+];
+const KB_PAGE = [
+  ['页内查找', ['Ctrl', 'F']],
+  ['放大页面', ['Ctrl', '=']],
+  ['缩小页面', ['Ctrl', '-']],
+  ['实际大小', ['Ctrl', '0']],
+  ['刷新页面', ['Ctrl', 'R']],
+  ['命令面板', ['Ctrl', 'K']],
+  ['标签列表', ['Ctrl', 'Shift', 'T']],
+  ['关闭浮层 / 退出分屏', ['Esc']],
+];
+function renderShortcuts() {
+  const paint = (box, list) => {
+    box.innerHTML = '';
+    for (const [label, keys] of list) {
+      const line = document.createElement('div');
+      line.className = 'kbd-line';
+      const l = document.createElement('span');
+      l.className = 'lbl'; l.textContent = label;
+      line.appendChild(l);
+      for (const k of keys) {
+        const el = document.createElement('kbd');
+        el.textContent = k;
+        line.appendChild(el);
+      }
+      box.appendChild(line);
+    }
+  };
+  paint(document.getElementById('kbd-nav'), KB_NAV);
+  paint(document.getElementById('kbd-page'), KB_PAGE);
+}
+
+/* ---------- 下载记录 ---------- */
+const DL_TEXT = { started: '下载中', done: '已完成', failed: '失败' };
+async function renderDownloads() {
+  const box = document.getElementById('dl-list');
+  if (!box) return;
+  let list = [];
+  try { list = await window.__TAURI__.core.invoke('get_downloads'); } catch { list = []; }
+  if (!list || !list.length) {
+    box.innerHTML = '<div class="empty-line">暂无下载记录</div>';
+    return;
+  }
+  box.innerHTML = '';
+  for (const d of list) {
+    let name = d.path || d.url;
+    const m = /[\\/]([^\\/]+)$/.exec(name);
+    if (m) name = m[1];
+    const el = document.createElement('div');
+    el.className = 'dl-item';
+    el.innerHTML =
+      '<span class="dl-ic"><svg class="ic"><use href="#i-download"/></svg></span>' +
+      '<div class="dl-main"><div class="dl-name"></div><div class="dl-meta"></div></div>' +
+      '<span class="dl-state"></span>';
+    el.querySelector('.dl-name').textContent = name;
+    el.querySelector('.dl-meta').textContent = (() => {
+      try { return new URL(d.url).hostname; } catch { return d.url; }
+    })();
+    const st = el.querySelector('.dl-state');
+    st.textContent = DL_TEXT[d.state] || d.state;
+    if (d.state === 'done') st.classList.add('ok');
+    if (d.state === 'failed') st.classList.add('bad');
+    if (d.state === 'done' && d.path) {
+      el.style.cursor = 'pointer';
+      el.onclick = () => {
+        try { window.__TAURI__.core.invoke('reveal_download', { path: d.path }); } catch {}
+      };
+    }
+    box.appendChild(el);
+  }
+}
+
+/* ---------- 扩展计数 ---------- */
+async function checkExtensions() {
+  const box = document.getElementById('ext-count');
+  try {
+    const list = await window.__TAURI__.core.invoke('get_extensions');
+    const on = (list || []).filter(x => x.enabled).length;
+    box.textContent = on + ' / ' + (list || []).length + ' 个已启用';
+  } catch { box.textContent = '—'; }
+}
+
+/** 两步确认按钮：不用原生 confirm（会弹「tauri.localhost 显示」的系统框） */
+function armButton(btn, label, action) {
+  let armed = false, timer = null;
+  const reset = () => {
+    armed = false;
+    btn.classList.remove('armed');
+    btn.textContent = label;
+    clearTimeout(timer);
+  };
+  btn.onclick = async () => {
+    if (!armed) {
+      armed = true;
+      btn.classList.add('armed');
+      btn.textContent = '再点一次确认';
+      timer = setTimeout(reset, 4000);
+      return;
+    }
+    reset();
+    await action();
+  };
+  reset();
+}
+
+/* ---------- 事件绑定 ---------- */
+document.querySelectorAll('.theme-card').forEach(b => {
+  b.onclick = () => { S.theme = b.dataset.theme; paintChoice(); applyTheme(); persist(); };
+});
+document.querySelectorAll('.accent-dot').forEach(b => {
+  b.onclick = () => { S.accent = b.dataset.accent; paintChoice(); applyTheme(); persist(); };
+});
+document.querySelectorAll('#bg-grid .bg-card').forEach(b => {
+  b.onclick = () => { S.newtabBg = b.dataset.v; paintChoice(); persist(); };
+});
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      const key = seg.dataset.key;
+      const type = seg.dataset.type;
+      S[key] = type === 'bool' ? (b.dataset.v === 'true')
+             : type === 'num' ? parseInt(b.dataset.v, 10)
+             : b.dataset.v;
+      paintChoice();
+      persist();
+    };
+  });
+});
+const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onchange = fn; };
+on('set-newtab', (e) => { S.newtab = e.target.value; persist(); });
+on('set-bmbar', (e) => { S.showBookmarksBar = e.target.checked; persist(); });
+on('set-tablist', (e) => { S.showTablistBtn = e.target.checked; persist(); });
+on('set-clock', (e) => { S.showClock = e.target.checked; persist(); });
+on('set-shortcuts', (e) => { S.showShortcuts = e.target.checked; persist(); });
+on('set-autocomplete', (e) => { S.autocomplete = e.target.checked; persist(); });
+on('set-motion', (e) => { S.reduceMotion = e.target.checked; persist(); });
+on('set-contrast', (e) => { S.highContrast = e.target.checked; persist(); });
+on('set-autostart', (e) => {
+  S.autostart = e.target.checked;
+  try { window.__TAURI__.core.invoke('set_autostart', { enable: S.autostart }); } catch {}
+});
+on('set-homepage', (e) => {
+  const v = e.target.value.trim() || 'trawl://newtab';
+  S.homepage = v;
+  persist();
+});
+on('set-btn-ext', (e) => { S.showExtBtn = e.target.checked; persist(); });
+on('set-btn-history', (e) => { S.showHistoryBtn = e.target.checked; persist(); });
+on('set-btn-dl', (e) => { S.showDlBtn = e.target.checked; persist(); });
+on('set-translate-lang', async (e) => {
+  // 写进「网页翻译」插件配置，地址栏「文A」与菜单「翻译此页」都读这里
+  try {
+    const list = await window.__TAURI__.core.invoke('get_extensions');
+    const tr = list.find(x => x.id === 'trawl-translate');
+    if (tr) {
+      tr.cfg = Object.assign({}, tr.cfg, { target: e.target.value });
+      await window.__TAURI__.core.invoke('save_extensions', { list });
+    }
+  } catch {}
+});
+
+const inv = (cmd, args) => { try { window.__TAURI__.core.invoke(cmd, args); } catch {} };
+document.getElementById('btn-open-dl').onclick = () => inv('open_download_dir');
+document.getElementById('btn-open-dl2').onclick = () => inv('open_download_dir');
+document.getElementById('btn-open-data').onclick = () => inv('open_data_dir');
+document.getElementById('btn-open-data2').onclick = () => inv('open_data_dir');
+document.getElementById('btn-open-data-p').onclick = () => inv('open_data_dir');
+document.getElementById('btn-open-data-s').onclick = () => inv('open_data_dir');
+document.getElementById('btn-goto-kbd').onclick = () => activate('shortcuts');
+document.getElementById('btn-incognito').onclick = () => inv('open_standalone_window', { incognito: true });
+document.getElementById('btn-open-groups').onclick = () => {
+  // 分组面板是 chrome 侧的浮层，这里用快捷键触发不了，直接切到标签列表面板
+  inv('open_tablist');
+};
+document.getElementById('btn-open-ext').onclick = () => inv('open_internal', { page: 'extensions' });
+document.getElementById('btn-default-apps').onclick = () => inv('open_default_apps');
+
+// ---- 删除浏览数据弹窗（Edge 式） ----
+let cbdHours = 24;
+const cbdMask = document.getElementById('cbd-mask');
+const cbdDialog = document.getElementById('cbd-dialog');
+const cbdResult = document.getElementById('cbd-result');
+const cbdOpen = () => {
+  cbdHours = 24;
+  document.querySelectorAll('.cbd-chip').forEach(c => c.classList.toggle('sel', c.dataset.hours === '24'));
+  cbdResult.style.display = 'none';
+  cbdMask.style.display = 'block';
+  cbdDialog.style.display = 'block';
+  // 预估：显示当前历史条数，帮助确认范围
+  window.__TAURI__.core.invoke('get_initial_history_count').then(n => {
+    const em = document.getElementById('cbd-history-count');
+    if (em) em.textContent = '共 ' + n + ' 条记录';
+  }).catch(() => {});
+};
+const cbdClose = () => { cbdMask.style.display = 'none'; cbdDialog.style.display = 'none'; };
+document.getElementById('btn-clear-data').onclick = cbdOpen;
+document.getElementById('cbd-cancel').onclick = cbdClose;
+cbdMask.onclick = cbdClose;
+document.querySelectorAll('.cbd-chip').forEach(c => {
+  c.onclick = () => {
+    cbdHours = Number(c.dataset.hours);
+    document.querySelectorAll('.cbd-chip').forEach(x => x.classList.toggle('sel', x === c));
+  };
+});
+document.getElementById('cbd-ok').onclick = async () => {
+  const args = {
+    hours: cbdHours,
+    history: document.getElementById('cbd-history').checked,
+    cookies: document.getElementById('cbd-cookies').checked,
+    cache: document.getElementById('cbd-cache').checked,
+    downloads: document.getElementById('cbd-downloads').checked,
+  };
+  if (!args.history && !args.cookies && !args.cache && !args.downloads) { cbdClose(); return; }
+  const btn = document.getElementById('cbd-ok');
+  btn.disabled = true; btn.textContent = '正在删除…';
+  let r = null;
+  try { r = await window.__TAURI__.core.invoke('clear_browsing_data', args); }
+  catch (e) { report('clear_browsing_data error: ' + e); }
+  btn.disabled = false; btn.textContent = '删除数据';
+  if (!r) { cbdClose(); return; }
+  const parts = [];
+  if (r.history) parts.push('浏览记录 ' + r.history + ' 条');
+  if (r.downloads) parts.push('下载记录 ' + r.downloads + ' 条');
+  if (r.cache_items) parts.push('缓存/Cookie 项目 ' + r.cache_items + ' 个');
+  let msg = parts.length ? '已删除：' + parts.join('、') : '所选数据已是干净状态，无需删除。';
+  if (r.cache_pending) msg += '；部分文件正在被占用，重启浏览器后再执行一次即可完全清除。';
+  cbdResult.textContent = msg;
+  cbdResult.style.display = 'block';
+  renderDownloads();
+  if (!r.cache_pending) setTimeout(cbdClose, 2200);
+};
+
+const clearDlBoth = async () => {
+  try { await window.__TAURI__.core.invoke('clear_downloads'); } catch {}
+  renderDownloads();
+};
+armButton(document.getElementById('btn-clear-dl'), '清空记录', clearDlBoth);
+armButton(document.getElementById('btn-clear-dl-top'), '清空记录', clearDlBoth);
+armButton(document.getElementById('btn-reset'), '重置设置', async () => {
+  try {
+    const fresh = await window.__TAURI__.core.invoke('reset_settings');
+    if (fresh) S = withDefaults(fresh);
+    applyTheme(); paintChoice();
+    location.reload();
+  } catch (e) { report('reset_settings error: ' + e); }
+});
+
+document.getElementById('eng-add').onclick = () => {
+  const name = document.getElementById('eng-name').value.trim();
+  let template = document.getElementById('eng-template').value.trim();
+  if (!name || !template) return;
+  if (!template.includes('{query}') && !template.includes('%s')) {
+    template += (template.endsWith('?') ? '{query}' : '/{query}');
+  }
+  S.engines.push({ name, template });
+  document.getElementById('eng-name').value = '';
+  document.getElementById('eng-template').value = '';
+  persist(); renderEngines(); fillAiEngine();
+};
+
+/* ---------- 本机密码管理 ---------- */
+async function renderPwList() {
+  const box = document.getElementById('pw-list');
+  if (!box) return;
+  let list = [];
+  try { list = await window.__TAURI__.core.invoke('pw_list'); } catch { list = []; }
+  if (!list || !list.length) {
+    box.innerHTML = '<div class="empty-line">还没有保存密码。可从浏览器导出的 CSV 导入，或在密码管理工具里添加。</div>';
+    return;
+  }
+  box.innerHTML = '';
+  for (const it of list) {
+    const row = document.createElement('div');
+    row.className = 'pw-row';
+    row.innerHTML =
+      '<div class="pw-main"><div class="pw-site"></div><div class="pw-user"></div></div>' +
+      '<span class="pw-pass">••••••••</span>' +
+      '<button class="pw-show">显示</button>' +
+      '<button class="pw-del" title="删除">✕</button>';
+    row.querySelector('.pw-site').textContent = it.site || '(未命名站点)';
+    row.querySelector('.pw-user').textContent = it.username || '';
+    const passEl = row.querySelector('.pw-pass');
+    let shown = false;
+    row.querySelector('.pw-show').onclick = () => {
+      shown = !shown;
+      passEl.textContent = shown ? (it.password || '') : '••••••••';
+      row.querySelector('.pw-show').textContent = shown ? '隐藏' : '显示';
+    };
+    row.querySelector('.pw-del').onclick = async () => {
+      try { await window.__TAURI__.core.invoke('pw_del', { id: it.id }); } catch {}
+      renderPwList();
+    };
+    box.appendChild(row);
+  }
+}
+
+const pwInv = async (cmd, args) => { try { return await window.__TAURI__.core.invoke(cmd, args); } catch (e) { report('pw ' + cmd + ' error: ' + e); return null; } };
+
+// 手动添加表单已移除（与密码管理工具页功能重复），pw_add 由 trawl://passwords 使用
+
+// 打开独立的密码管理工具（trawl://passwords）
+const openPwBtn = document.getElementById('btn-open-passwords');
+if (openPwBtn) {
+  openPwBtn.onclick = () => inv('open_internal', { page: 'passwords' });
+}
+const pwImportBtn = document.getElementById('btn-pw-import');
+if (pwImportBtn) {
+  pwImportBtn.onclick = () => {
+    const form = document.getElementById('pw-import-form');
+    form.style.display = form.style.display === 'none' ? '' : 'none';
+    if (form.style.display !== 'none') document.getElementById('pw-csv-path').focus();
+  };
+  document.getElementById('pw-import-ok').onclick = async () => {
+    const path = document.getElementById('pw-csv-path').value.trim();
+    if (!path) return;
+    const n = await pwInv('pw_import_csv', { path });
+    if (n !== null) {
+      document.getElementById('pw-import-form').style.display = 'none';
+      document.getElementById('pw-csv-path').value = '';
+      renderPwList();
+    }
+  };
+}
+
+function activate(sec) {
+  const item = document.querySelector('.nav-item[data-sec="' + sec + '"]');
+  const sec2 = document.getElementById('sec-' + sec);
+  if (!item || !sec2) return false;
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  item.classList.add('active');
+  sec2.classList.add('active');
+  if (sec === 'downloads') renderDownloads();
+  if (sec === 'extensions') checkExtensions();
+  return true;
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.onclick = () => {
+    activate(item.dataset.sec);
+    if (location.hash.slice(1) !== item.dataset.sec) {
+      history.replaceState(null, '', '#' + item.dataset.sec);
+    }
+  };
+});
+
+// 支持 trawl://settings#downloads 之类的深链
+const deep = location.hash.slice(1);
+if (deep) activate(deep);
+window.addEventListener('hashchange', () => activate(location.hash.slice(1)));
+
+load();
+</script>
+
+</body>
+</html>

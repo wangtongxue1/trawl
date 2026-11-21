@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>右键菜单</title>
+<style>
+:root {
+  --panel: #ffffff; --hover: rgba(17,24,39,.06);
+  --border: rgba(17,24,39,.10); --divider: rgba(17,24,39,.07);
+  --text: #1f2329; --text-dim: #9aa4b0;
+}
+:root[data-theme="dark"] {
+  --panel: #23272e; --hover: rgba(255,255,255,.09);
+  --border: rgba(255,255,255,.12); --divider: rgba(255,255,255,.08);
+  --text: #e6e8eb; --text-dim: #7d8792;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: transparent; }
+body {
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  color: var(--text); user-select: none; overflow: hidden;
+  padding: 6px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.08);
+  padding: 6px;
+}
+.item {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 34px; padding: 0 10px;
+  border-radius: 7px; font-size: 12.5px; cursor: pointer;
+  white-space: nowrap;
+}
+.item:hover:not(.disabled) { background: var(--hover); }
+.item.disabled { opacity: .38; cursor: default; }
+.item .k {
+  margin-left: auto; padding-left: 22px;
+  color: var(--text-dim); font-size: 10.5px;
+}
+.sep { height: 1px; background: var(--divider); margin: 5px 8px; }
+</style>
+</head>
+<body>
+<div class="card" id="card"></div>
+<script>
+const { invoke } = window.__TAURI__.core;
+const $ = (s) => document.querySelector(s);
+let items = [];
+
+function tryTheme() {
+  invoke('get_settings').then((s) => {
+    document.documentElement.dataset.theme = s.theme || 'light';
+  }).catch(() => {});
+}
+
+function fit() {
+  const h = Math.ceil($('#card').getBoundingClientRect().height) + 12;
+  invoke('resize_overlay', { height: h }).catch(() => {});
+}
+
+function render() {
+  const card = $('#card');
+  card.innerHTML = '';
+  for (const it of items) {
+    if (it.sep) {
+      const s = document.createElement('div');
+      s.className = 'sep';
+      card.appendChild(s);
+      continue;
+    }
+    const el = document.createElement('div');
+    el.className = 'item' + (it.disabled ? ' disabled' : '');
+    const label = document.createElement('span');
+    label.textContent = it.label;
+    el.appendChild(label);
+    if (it.key) {
+      const k = document.createElement('span');
+      k.className = 'k';
+      k.textContent = it.key;
+      el.appendChild(k);
+    }
+    if (!it.disabled) el.onclick = () => pick(it.action);
+    card.appendChild(el);
+  }
+  requestAnimationFrame(() => requestAnimationFrame(fit));
+}
+
+async function pick(action) {
+  try { await invoke('ctxmenu_pick', { action }); } catch (_) {}
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') invoke('close_overlay').catch(() => {}); });
+
+(async () => {
+  tryTheme();
+  try { items = await invoke('get_ctxmenu'); } catch (_) {}
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# 依赖与构建产物
+node_modules/
+src-tauri/target/
+dist/*.map
+
+# 本地发布包与临时目录
+release/
+_shots/
+.npm-cache/
+.wix/
+
+# 日志与调试文件
+.run-*.log
+debug.log
+*.log
+
+# 系统文件
+Thumbs.db
+.DS_Store
+.tabbit-study/

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-accent="green">
+<head>
+<meta charset="UTF-8">
+<title>扩展程序 - Trawl</title>
+<style>
+:root {
+  --accent: #10b981; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --bg: #f5f7f9; --panel: #ffffff; --border: #e6eaee; --border-strong: #d6dde3;
+  --text: #1f2937; --text-2: #5a6672; --text-3: #98a2ae;
+  --hover: #f1f5f7; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 18px rgba(16,24,40,.05);
+}
+:root[data-theme="dark"] {
+  --bg: #15181c; --panel: #1e2228; --border: #2c323a; --border-strong: #3a424c;
+  --text: #e8ebef; --text-2: #a9b3be; --text-3: #76818d;
+  --hover: #272c33; --shadow: 0 8px 24px rgba(0,0,0,.28);
+}
+:root[data-accent="purple"] { --accent: #8b5cf6; }
+:root[data-accent="blue"]   { --accent: #3b82f6; }
+:root[data-accent="orange"] { --accent: #f59e0b; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px;
+}
+svg.sprite { display: none; }
+.ic { width: 17px; height: 17px; flex-shrink: 0; display: block;
+  stroke: currentColor; fill: none; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+  display: flex; align-items: center; gap: 14px;
+  height: 56px; padding: 0 22px;
+  background: var(--panel); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 5;
+}
+.topbar .logo { width: 26px; height: 26px; border-radius: 7px; }
+.topbar h1 { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.search-wrap {
+  flex: 1; max-width: 520px; margin: 0 auto;
+  position: relative;
+}
+.search-wrap .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-3); width: 15px; height: 15px; }
+.search-wrap input {
+  width: 100%; height: 34px; padding: 0 12px 0 34px;
+  border: 1px solid transparent; border-radius: 9px;
+  background: var(--hover); color: var(--text);
+  font-family: inherit; font-size: 12.5px; outline: none;
+}
+.search-wrap input:focus { background: var(--panel); border-color: var(--accent); }
+.dev-mode { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+
+/* ---------- 开关 ---------- */
+.switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.slider { position: absolute; inset: 0; border-radius: 999px; background: #cfd6dd; transition: background .18s ease; }
+.slider::after {
+  content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .18s ease;
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::after { transform: translateX(16px); }
+.switch input:disabled + .slider { opacity: .45; cursor: not-allowed; }
+
+/* ---------- 操作条 ---------- */
+.actionbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 22px 4px;
+}
+.chip {
+  height: 32px; padding: 0 14px; border-radius: 8px;
+  border: 1px solid var(--border-strong); background: var(--panel);
+  color: var(--text-2); font-family: inherit; font-size: 12px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip:disabled { opacity: .45; cursor: not-allowed; }
+.chip .ic { width: 14px; height: 14px; }
+
+/* ---------- 主体 ---------- */
+.body { display: flex; align-items: flex-start; gap: 26px; padding: 12px 22px 60px; }
+.sidenav { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
+.sidenav .item {
+  display: flex; align-items: center; gap: 10px;
+  height: 36px; padding: 0 12px; border-radius: 9px;
+  color: var(--text-2); font-size: 12.5px; cursor: pointer;
+}
+.sidenav .item:hover { background: var(--hover); color: var(--text); }
+.sidenav .item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.sidenav .sep { height: 1px; background: var(--border); margin: 10px 6px; }
+.sidenav .hint { font-size: 11px; color: var(--text-3); line-height: 1.65; padding: 4px 12px; }
+.sidenav .hint a { color: var(--accent); text-decoration: none; }
+
+.content { flex: 1; min-width: 0; }
+.sec-title {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 600; margin: 6px 0 12px;
+}
+.sec-title .sub { font-size: 11.5px; color: var(--text-3); font-weight: 400; }
+.grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  margin-bottom: 26px;
+}
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 13px;
+  box-shadow: var(--shadow); padding: 14px 15px 12px;
+  display: flex; flex-direction: column; gap: 9px;
+  transition: border-color .14s ease, transform .14s ease;
+}
+.card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.card-head { display: flex; align-items: flex-start; gap: 11px; }
+.ex-icon {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+}
+.ex-icon .ic { width: 19px; height: 19px; }
+.ex-icon.local { background: var(--hover); color: var(--text-2); }
+.card-title { flex: 1; min-width: 0; }
+.card-title .n { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.card-title .n .ver { font-size: 10.5px; color: var(--text-3); font-weight: 400; }
+.card-title .tag {
+  font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); font-weight: 600;
+}
+.card-desc { font-size: 11.5px; color: var(--text-2); line-height: 1.6; min-height: 36px; }
+.card-id {
+  font-size: 10.5px; color: var(--text-3); font-family: ui-monospace, Consolas, monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-foot { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+.btn-xs {
+  height: 27px; padding: 0 11px; border-radius: 7px;
+  border: 1px solid var(--border-strong); background: transparent; color: var(--text-2);
+  font-family: inherit; font-size: 11.5px; cursor: pointer;
+}
+.btn-xs:hover { border-color: var(--accent); color: var(--accent); }
+.btn-xs.danger:hover { border-color: #e0533d; color: #e0533d; }
+.card-foot .spacer { flex: 1; }
+.empty { padding: 28px; text-align: center; color: var(--text-3); font-size: 12px;
+  border: 1px dashed var(--border-strong); border-radius: 12px; }
+
+/* ---------- 侧栏商店入口（超链接样式） ---------- */
+.store-item .lnk { color: #2f6fd6; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: transparent; transition: text-decoration-color .12s ease; }
+.store-item:hover .lnk { text-decoration-color: #2f6fd6; }
+.store-item { cursor: pointer; }
+/* ---------- 侧栏商店入口 ---------- */
+.store-item .store-dot {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ---------- 快捷键 ---------- */
+.kbd-list { background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 4px 16px; }
+.kbd-line { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+.kbd-line:first-child { border-top: none; }
+.kbd-line .lbl { flex: 1; }
+kbd {
+  font-family: inherit; font-size: 11px; color: var(--text-2);
+  background: var(--hover); border: 1px solid var(--border); border-bottom-width: 2px;
+  border-radius: 6px; padding: 2px 7px; margin-left: 4px; white-space: nowrap;
+}
+
+/* ---------- 自绘对话框（原生 confirm 会阻塞 WebView2） ---------- */
+.mask {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(16,24,40,.34);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(1.5px);
+}
+.mask.hidden { display: none; }
+.dialog {
+  width: 400px; max-width: calc(100vw - 48px);
+  background: var(--panel); border-radius: 14px; padding: 20px 22px 16px;
+  box-shadow: 0 18px 48px rgba(16,24,40,.28);
+  animation: pop .14s ease-out;
+}
+@keyframes pop { from { transform: scale(.97); opacity: .6; } to { transform: scale(1); opacity: 1; } }
+.dialog h3 { font-size: 14.5px; margin-bottom: 8px; }
+.dialog p { font-size: 12px; color: var(--text-3); line-height: 1.7; margin-bottom: 12px; }
+.dialog input[type=text] {
+  width: 100%; height: 34px; padding: 0 11px; margin-bottom: 14px;
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-family: inherit; font-size: 12px; outline: none;
+}
+.dialog input[type=text]:focus { border-color: var(--accent); }
+.dialog .row-sw { display: flex; align-items: center; gap: 12px; padding: 9px 0; font-size: 12.5px; }
+.dialog .row-sw .d { flex: 1; }
+.dialog .row-sw .d small { display: block; color: var(--text-3); font-size: 11px; margin-top: 2px; }
+.dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.dialog .actions button {
+  height: 32px; padding: 0 15px; border-radius: 8px;
+  font-family: inherit; font-size: 12px; cursor: pointer;
+}
+.dialog .actions .ghost { border: 1px solid var(--border-strong); background: transparent; color: var(--text-2); }
+.dialog .actions .ok { border: none; background: var(--accent); color: #fff; }
+.dialog .actions .ok.danger { background: #e0533d; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
+  background: rgba(31,41,55,.94); color: #fff; font-size: 12px;
+  padding: 9px 16px; border-radius: 999px; opacity: 0; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease; z-index: 60;
+}
+.toast.on { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+</style>
+</head>
+<body>
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M10 3.5h4v2.1a1.8 1.8 0 1 0 3.6 0V3.5H21v4.9h-2.1a1.8 1.8 0 1 0 0 3.6H21v7.5h-5.2v-2.1a1.8 1.8 0 1 0-3.6 0v2.1H3V12h2.1a1.8 1.8 0 1 0 0-3.6H3V3.5h7z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
+  <symbol id="i-kbd" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7.5 14h9"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M12 3l8 4v10l-8 4-8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></symbol>
+  <symbol id="i-translate" viewBox="0 0 24 24"><path d="M3 5.5h8.5M7.2 3.5v2c0 3.6-1.7 6.4-4.2 8.2"/><path d="M4.6 9.3c1.5 2.6 3.6 4 6.4 4.9"/><path d="M12.6 20.5l4-10.5 4 10.5"/><path d="M14.2 16.7h4.9"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+</svg>
+
+<div class="topbar">
+  <svg class="ic logo" viewBox="0 0 24 24" style="stroke:var(--accent)"><use href="#i-ext" fill="none"/></svg>
+  <h1>扩展程序</h1>
+  <div class="search-wrap">
+    <svg class="ic"><use href="#i-search"/></svg>
+    <input id="q" type="text" placeholder="搜索扩展程序" autocomplete="off" spellcheck="false">
+  </div>
+  <label class="dev-mode">
+    开发者模式
+    <span class="switch"><input type="checkbox" id="devmode"><span class="slider"></span></span>
+  </label>
+</div>
+
+<div class="actionbar">
+  <button class="chip" id="btn-load" disabled><svg class="ic"><use href="#i-folder"/></svg>加载未打包的扩展程序</button>
+  <button class="chip" id="btn-update"><svg class="ic"><use href="#i-refresh"/></svg>更新</button>
+</div>
+
+<div class="body">
+  <aside class="sidenav" id="nav">
+    <div class="item active" data-view="mine"><svg class="ic"><use href="#i-ext"/></svg>我的扩展程序</div>
+    <div class="item" data-view="kbd"><svg class="ic"><use href="#i-kbd"/></svg>键盘快捷键</div>
+    <div class="sep"></div>
+    <div class="hint" style="padding-bottom:2px">获取更多扩展程序</div>
+    <div class="item store-item" id="store-chrome">
+      <span class="store-dot" style="background:#fff;border:1px solid #e3e3e3">
+        <svg viewBox="0 0 48 48" width="18" height="18">
+          <path fill="#EA4335" d="M24 4c7.4 0 13.9 4 17.3 10H24a10 10 0 0 0-8.7 5.1L8.6 8.9A19.9 19.9 0 0 1 24 4z"/>
+          <path fill="#FBBC05" d="M41.3 14A20 20 0 0 1 24 44l6.6-11.5a10 10 0 0 0 .1-11.6l-6.7-6.9h17.3z"/>
+          <path fill="#34A853" d="M24 44A19.9 19.9 0 0 1 8.6 8.9l6.7 10.2A10 10 0 0 0 24 39.5c1.2 0 2.4-.2 3.4-.6L24 44z"/>
+          <circle cx="24" cy="24" r="11" fill="#fff"/>
+          <circle cx="24" cy="24" r="8.6" fill="#4285F4"/>
+        </svg>
+      </span>
+      <span class="lnk">Chrome 应用商店</span>
+    </div>
+    <div class="item store-item" id="store-edge">
+      <span class="store-dot" style="background:#fff;border:1px solid #e3e3e3">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <defs>
+            <linearGradient id="edge-swirl" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#0d7fd4"/>
+              <stop offset="1" stop-color="#28c3a8"/>
+            </linearGradient>
+          </defs>
+          <path fill="url(#edge-swirl)" d="M21.7 17.1c-.3.7-1 2-2.4 3.3A8.7 8.7 0 0 1 12 22.8c-5 0-8.5-3.5-8.5-8.6 0-4.9 3.3-8.5 8-8.5 4.4 0 7.5 3 7.6 7.3 0 .5-.4 1.1-1 1.1H8.3c.2 2.5 2 4.1 4.6 4.1 2 0 3.6-.8 4.6-2.4.2-.3.5-.4.8-.3l3 .9c.3.1.5.4.4.7z"/>
+        </svg>
+      </span>
+      <span class="lnk">Edge 扩展商店</span>
+    </div>
+    <div class="sep"></div>
+    <div class="hint" id="count-hint">内置插件随浏览器提供，开关即时生效。</div>
+  </aside>
+
+  <main class="content" id="view-mine">
+    <div class="sec-title">
+      <span>我的扩展程序</span>
+      <span class="sub" id="mine-sub"></span>
+    </div>
+    <div class="grid" id="grid-all"></div>
+    <div class="empty" id="local-empty" style="display:none">还没有任何扩展程序。打开「开发者模式」后可以加载未打包的扩展目录。</div>
+  </main>
+
+  <main class="content" id="view-kbd" style="display:none">
+    <div class="sec-title"><span>键盘快捷键</span><span class="sub">窗口聚焦时生效</span></div>
+    <div class="kbd-list" id="kbd-list"></div>
+  </main>
+</div>
+
+<!-- 自绘对话框 -->
+<div class="mask hidden" id="mask">
+  <div class="dialog" role="dialog" aria-modal="true">
+    <h3 id="dlg-title">标题</h3>
+    <p id="dlg-desc"></p>
+    <input type="text" id="dlg-input" style="display:none">
+    <div id="dlg-body"></div>
+    <div class="actions">
+      <button class="ghost" id="dlg-cancel">取消</button>
+      <button class="ok" id="dlg-ok">确定</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const core = window.__TAURI__ ? window.__TAURI__.core : null;
+const call = async (cmd, args) => {
+  try { return await core.invoke(cmd, args); } catch (e) {
+    try { core.invoke('debug_msg', { msg: `extensions: ${cmd} 失败 ${String(e)}` }); } catch {}
+    return null;
+  }
+};
+
+/* ---------- 主题 ---------- */
+function applyTheme() {
+  let t = 'light', a = 'green';
+  try { t = localStorage.getItem('trawl-theme') || 'light'; a = localStorage.getItem('trawl-accent') || 'green'; } catch {}
+  document.documentElement.dataset.theme = t;
+  document.documentElement.dataset.accent = a;
+}
+
+/* ---------- 内置扩展的图标与默认配置 ---------- */
+const ICONS = {
+  'trawl-translate': 'i-translate',
+  'trawl-close-guard': 'i-shield',
+  'trawl-reading': 'i-book',
+  'trawl-shortlink': 'i-link',
+};
+// 内置扩展的「配置」项：存在 localStorage，配置面板里可改
+const CONFIG = {
+  'trawl-translate': [
+    { k: 'target', t: '默认目标语言', type: 'select', opts: [['zh', '中文'], ['en', '英文'], ['ja', '日文'], ['ko', '韩文']], v: 'zh' },
+  ],
+  'trawl-close-guard': [
+    { k: 'threshold', t: '标签数超过该值时提醒', type: 'select', opts: [['3', '3 个'], ['5', '5 个'], ['8', '8 个']], v: '5' },
+  ],
+  'trawl-reading': [
+    { k: 'width', t: '正文宽度', type: 'select', opts: [['680', '适中'], ['820', '宽松'], ['960', '很宽']], v: '820' },
+  ],
+  'trawl-shortlink': [
+    { k: 'keepRef', t: '保留来源参数（ref / from）', type: 'bool', v: false },
+  ],
+};
+
+function cfgKey(id) { return 'trawl-ext-cfg-' + id; }
+function loadCfg(id) {
+  const defs = CONFIG[id] || [];
+  // 优先读后端（extensions.json 里每个条目的 cfg 字段），扩展页刷新/重启后不丢
+  const it = LIST.find(x => x.id === id);
+  if (it && it.cfg) {
+    return defs.map(d => ({ ...d, v: it.cfg[d.k] !== undefined ? it.cfg[d.k] : d.v }));
+  }
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(cfgKey(id)) || '{}'); } catch {}
+  return defs.map(d => ({ ...d, v: saved[d.k] !== undefined ? saved[d.k] : d.v }));
+}
+function saveCfg(id, values) {
+  try { localStorage.setItem(cfgKey(id), JSON.stringify(values)); } catch {}
+  // 同步写进后端，关闭确认等插件的配置要被 Rust 侧读到
+  const it = LIST.find(x => x.id === id);
+  if (it) { it.cfg = { ...(it.cfg || {}), ...values }; persist(); }
+}
+
+/* ---------- 列表 ---------- */
+let LIST = [];
+let devMode = false;
+
+// 内置插件的最新描述：以页面代码为准（覆盖旧 extensions.json 里的过时文案）
+const BUILTIN_DESC = {
+  'trawl-translate': '地址栏「文A」按钮或菜单「翻译此页」在当前页面直接双语翻译（原文 + 译文），支持中英日韩；目标语言在「配置」里调整。',
+  'trawl-close-guard': '关闭窗口且标签数达到阈值（可在「配置」里调整）时先弹确认框，避免误关整组标签。',
+  'trawl-reading': '菜单「阅读模式」抽取正文、去掉广告与侧栏，适合长文阅读；再点一次退出阅读模式。',
+  'trawl-shortlink': '复制网址时自动去掉 utm、spm 等跟踪参数（可在「配置」里保留 from/ref 来源参数）。',
+};
+
+async function loadList() {
+  const raw = await call('get_extensions');
+  LIST = Array.isArray(raw) ? raw : [];
+  if (!LIST.length) {
+    // 首次使用：让 Rust 侧写入内置清单
+    LIST = [];
+  }
+  LIST.forEach(it => { if (it.builtin && BUILTIN_DESC[it.id]) it.desc = BUILTIN_DESC[it.id]; });
+  render();
+}
+
+function persist() {
+  call('save_extensions', { list: LIST });
+}
+
+function esc(s) { return String(s == null ? '' : s); }
+
+function buildCard(it) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const icon = ICONS[it.id] || (it.builtin ? 'i-ext' : 'i-folder');
+  card.innerHTML =
+    '<div class="card-head">' +
+      '<div class="ex-icon' + (it.builtin ? '' : ' local') + '"><svg class="ic"><use href="#' + icon + '"/></svg></div>' +
+      '<div class="card-title"><div class="n"><span class="nm"></span><span class="ver"></span>' +
+        (it.builtin ? '<span class="tag">内置</span>' : '') +
+      '</div></div>' +
+    '</div>' +
+    '<div class="card-desc"></div>' +
+    '<div class="card-id"></div>' +
+    '<div class="card-foot">' +
+      '<button class="btn-xs act-cfg">配置</button>' +
+      (it.builtin ? '' : '<button class="btn-xs danger act-rm">移除</button>') +
+      '<span class="spacer"></span>' +
+      '<span class="switch"><input type="checkbox" class="act-tg"><span class="slider"></span></span>' +
+    '</div>';
+  card.querySelector('.nm').textContent = it.name || '未命名扩展';
+  card.querySelector('.ver').textContent = 'v' + (it.version || '1.0.0');
+  card.querySelector('.card-desc').textContent = it.desc || '';
+  card.querySelector('.card-id').textContent = 'ID: ' + (it.path || it.id || '—');
+  card.querySelector('.card-id').title = it.path || it.id || '';
+  const tg = card.querySelector('.act-tg');
+  tg.checked = !!it.enabled;
+  tg.onchange = () => { it.enabled = tg.checked; persist(); updateHint(); toast((it.name || '插件') + (it.enabled ? ' 已启用' : ' 已停用')); };
+  card.querySelector('.act-cfg').onclick = () => openConfig(it);
+  const rm = card.querySelector('.act-rm');
+  if (rm) rm.onclick = () => removeExt(it);
+  return card;
+}
+
+function render() {
+  const q = (document.getElementById('q').value || '').trim().toLowerCase();
+  const match = (it) => !q || (it.name || '').toLowerCase().includes(q) || (it.desc || '').toLowerCase().includes(q) || (it.id || '').toLowerCase().includes(q);
+
+  const g = document.getElementById('grid-all');
+  g.innerHTML = '';
+  // 内置插件排前面（带「内置」标签），本地扩展跟在后面，统一在「我的扩展程序」里管理
+  const all = LIST.filter(match).slice().sort((a, b) => (b.builtin ? 1 : 0) - (a.builtin ? 1 : 0));
+  all.forEach(x => g.appendChild(buildCard(x)));
+  const builtinCount = LIST.filter(x => x.builtin).length;
+  document.getElementById('local-empty').style.display = all.length ? 'none' : '';
+  document.getElementById('mine-sub').textContent =
+    builtinCount + ' 个内置 · ' + (LIST.length - builtinCount) + ' 个本地';
+  updateHint();
+}
+
+function updateHint() {
+  const on = LIST.filter(x => x.enabled).length;
+  document.getElementById('count-hint').textContent =
+    '已启用 ' + on + ' / ' + LIST.length + ' 个扩展程序，开关即时生效。';
+}
+
+/* ---------- 对话框 ---------- */
+let dlgOk = null;
+function openDialog({ title, desc, input, body, okText = '确定', danger = false, onOk, hideCancel = false }) {
+  const mask = document.getElementById('mask');
+  document.getElementById('dlg-title').textContent = title || '';
+  const d = document.getElementById('dlg-desc');
+  d.textContent = desc || '';
+  d.style.display = desc ? '' : 'none';
+  const inp = document.getElementById('dlg-input');
+  inp.style.display = input ? '' : 'none';
+  inp.value = (input && input.value) || '';
+  inp.placeholder = (input && input.placeholder) || '';
+  const b = document.getElementById('dlg-body');
+  b.innerHTML = '';
+  if (body) b.appendChild(body);
+  const ok = document.getElementById('dlg-ok');
+  ok.textContent = okText;
+  ok.classList.toggle('danger', !!danger);
+  const cancel = document.getElementById('dlg-cancel');
+  cancel.style.display = hideCancel ? 'none' : '';
+  mask.classList.remove('hidden');
+  if (input) setTimeout(() => inp.focus(), 30);
+  dlgOk = () => {
+    const v = inp.style.display === 'none' ? undefined : inp.value.trim();
+    mask.classList.add('hidden');
+    dlgOk = null;
+    if (onOk) onOk(v);
+  };
+  ok.onclick = () => dlgOk && dlgOk();
+  cancel.onclick = () => { mask.classList.add('hidden'); dlgOk = null; };
+  if (input) inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } };
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !document.getElementById('mask').classList.contains('hidden')) {
+    document.getElementById('mask').classList.add('hidden');
+    dlgOk = null;
+  }
+});
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('on'), 1800);
+}
+
+/* ---------- 配置面板 ---------- */
+function openConfig(it) {
+  const defs = loadCfg(it.id);
+  const box = document.createElement('div');
+  const values = {};
+  if (!defs.length) {
+    const p = document.createElement('p');
+    p.textContent = '该扩展没有可配置项。';
+    p.style.marginBottom = '0';
+    box.appendChild(p);
+  }
+  for (const d of defs) {
+    values[d.k] = d.v;
+    const row = document.createElement('div');
+    row.className = 'row-sw';
+    const left = document.createElement('div');
+    left.className = 'd';
+    left.textContent = d.t;
+    if (d.d) { const s = document.createElement('small'); s.textContent = d.d; left.appendChild(s); }
+    row.appendChild(left);
+    if (d.type === 'bool') {
+      const sw = document.createElement('span');
+      sw.className = 'switch';
+      sw.innerHTML = '<input type="checkbox"><span class="slider"></span>';
+      const cb = sw.querySelector('input');
+      cb.checked = !!d.v;
+      cb.onchange = () => { values[d.k] = cb.checked; };
+      row.appendChild(sw);
+    } else {
+      const sel = document.createElement('select');
+      sel.style.cssText = 'height:30px;border:1px solid var(--border-strong);border-radius:7px;background:var(--panel);color:var(--text);font-family:inherit;font-size:12px;padding:0 8px;';
+      for (const [v, label] of d.opts) {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = label;
+        sel.appendChild(o);
+      }
+      sel.value = String(d.v);
+      sel.onchange = () => { values[d.k] = sel.value; };
+      row.appendChild(sel);
+    }
+    box.appendChild(row);
+  }
+  openDialog({
+    title: (it.name || '扩展') + ' · 配置',
+    body: box,
+    okText: '保存',
+    onOk: () => { saveCfg(it.id, values); toast('配置已保存'); },
+  });
+}
+
+/* ---------- 加载 / 移除 ---------- */
+function loadUnpacked() {
+  openDialog({
+    title: '加载未打包的扩展程序',
+    desc: '填写本地扩展目录的完整路径（含 manifest.json）。带 content_scripts 的扩展会在匹配的页面上自动执行，开关与移除随时可改。',
+    input: { placeholder: '例如 D:\\my-ext\\dist' },
+    okText: '加载',
+    onOk: async (path) => {
+      if (!path) { toast('路径不能为空'); return; }
+      const item = await call('load_unpacked_ext', { path });
+      if (!item) { toast('加载失败：目录里没有合法的 manifest.json'); return; }
+      LIST.push({ id: item.id, name: item.name, version: item.version, desc: item.desc, enabled: true, builtin: false, path: item.path });
+      persist(); render();
+      toast('已加载：' + item.name);
+    },
+  });
+}
+
+function removeExt(it) {
+  openDialog({
+    title: '移除扩展程序？',
+    desc: '「' + (it.name || '') + '」将从列表移除，本地目录里的文件不会被删除。',
+    okText: '移除', danger: true,
+    onOk: () => {
+      LIST = LIST.filter(x => x.id !== it.id);
+      persist(); render();
+      toast('已移除');
+    },
+  });
+}
+
+/* ---------- 快捷键视图 ---------- */
+const KBD = [
+  ['新建标签页', ['Ctrl', 'T']],
+  ['关闭标签页', ['Ctrl', 'W']],
+  ['聚焦地址栏', ['Ctrl', 'L']],
+  ['历史记录', ['Ctrl', 'H']],
+  ['收藏当前页', ['Ctrl', 'D']],
+  ['书签管理', ['Ctrl', 'Shift', 'B']],
+  ['下载内容', ['Ctrl', 'J']],
+  ['重新加载', ['Ctrl', 'R']],
+  ['扩展程序', ['Ctrl', 'Shift', 'E']],
+  ['标签列表', ['Ctrl', 'Shift', 'T']],
+  ['命令面板', ['Ctrl', 'K']],
+  ['页内查找', ['Ctrl', 'F']],
+  ['放大 / 缩小页面', ['Ctrl', '= / -']],
+  ['后退 / 前进', ['Alt', '← / →']],
+];
+function renderKbd() {
+  const box = document.getElementById('kbd-list');
+  box.innerHTML = '';
+  for (const [label, keys] of KBD) {
+    const line = document.createElement('div');
+    line.className = 'kbd-line';
+    const l = document.createElement('span');
+    l.className = 'lbl'; l.textContent = label;
+    line.appendChild(l);
+    for (const k of keys) {
+      const el = document.createElement('kbd');
+      el.textContent = k;
+      line.appendChild(el);
+    }
+    box.appendChild(line);
+  }
+}
+
+/* ---------- 事件 ---------- */
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('devmode').addEventListener('change', (e) => {
+  devMode = e.target.checked;
+  document.getElementById('btn-load').disabled = !devMode;
+  try { localStorage.setItem('trawl-ext-devmode', devMode ? '1' : '0'); } catch {}
+  toast(devMode ? '开发者模式已开启' : '开发者模式已关闭');
+});
+document.getElementById('btn-load').onclick = loadUnpacked;
+// Chrome 应用商店 / Edge 扩展商店：新标签页打开
+document.getElementById('store-chrome').onclick = () => {
+  call('navigate_new_tab', { input: 'https://chromewebstore.google.com/' });
+  toast('已在新标签页打开 Chrome 应用商店');
+};
+document.getElementById('store-edge').onclick = () => {
+  call('navigate_new_tab', { input: 'https://microsoftedge.microsoft.com/addons' });
+  toast('已在新标签页打开 Edge 扩展商店');
+};
+document.getElementById('btn-update').onclick = async () => {
+  await loadList();
+  toast('已检查更新');
+};
+// 只给带 data-view 的导航项绑视图切换；商店入口（.store-item）没有 data-view，
+// 之前这里把它们的 onclick 一并覆盖掉，导致点击后什么都不会发生
+document.querySelectorAll('.sidenav .item[data-view]').forEach(it => {
+  it.onclick = () => {
+    document.querySelectorAll('.sidenav .item[data-view]').forEach(x => x.classList.remove('active'));
+    it.classList.add('active');
+    const v = it.dataset.view;
+    document.getElementById('view-mine').style.display = v === 'mine' ? '' : 'none';
+    document.getElementById('view-kbd').style.display = v === 'kbd' ? '' : 'none';
+  };
+});
+
+/* ---------- 启动 ---------- */
+applyTheme();
+try {
+  devMode = localStorage.getItem('trawl-ext-devmode') === '1';
+  document.getElementById('devmode').checked = devMode;
+  document.getElementById('btn-load').disabled = !devMode;
+} catch {}
+renderKbd();
+loadList();
+</script>
+</body>
+</html>

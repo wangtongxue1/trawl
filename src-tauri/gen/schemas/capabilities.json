@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Trawl 主界面与内部页面能力","local":true,"windows":["main"],"webviews":["ui","tab-*","overlay"],"permissions":["core:default","core:window:allow-start-dragging","core:window:allow-internal-toggle-maximize"]}}

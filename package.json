@@ -1,0 +1,11 @@
+{
+  "name": "yuansou-browser",
+  "private": true,
+  "version": "0.7.13",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

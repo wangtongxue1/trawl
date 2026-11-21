@@ -1,0 +1,247 @@
+name: Release Trawl
+
+# 触发方式：
+#   1. 推送 v* 标签：git tag v0.7.13 && git push origin v0.7.13
+#   2. 推送 main 分支即自动构建（本地网络推不了标签时的兜底）
+#   3. 手动触发：Actions 页面 → Release Trawl → Run workflow
+# 产物：
+#   Windows: .msi / .exe(NSIS) 安装包 + 便携版 zip
+#   macOS:   Apple Silicon (aarch64.dmg) + Intel (x64.dmg)
+#   Android: APK（arm64，可选签名）
+#   iOS:     可选（需配置签名 secrets，见 build_ios 输入）
+# 鸿蒙 OS：Tauri 暂不支持 HarmonyOS，无法云端构建（见 README 说明）
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_ios:
+        description: '是否构建 iOS（需要已配置签名 secrets）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  # ============ 桌面端：Windows + macOS ============
+  build-desktop:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          # Windows：MSI + NSIS 安装包（tauri.conf.json bundle.targets）
+          - platform: 'windows-latest'
+            args: ''
+          # macOS Apple Silicon (M1/M2/M3/M4)
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+          # macOS Intel
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+
+    runs-on: ${{ matrix.settings.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.settings.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build and upload release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ===== macOS 签名与公证（可选：不配置也能出包，用户首次打开需右键绕过 Gatekeeper）=====
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # ===== Windows 代码签名（可选：配置后不再触发 SmartScreen 警告）=====
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        with:
+          projectName: Trawl
+          tagName: v__VERSION__
+          releaseName: 'Trawl 元搜浏览器 v__VERSION__'
+          releaseBody: 'Trawl 元搜浏览器新版本。Windows 用 .msi/.exe；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.settings.args }}
+
+      # ===== Windows 便携版 zip：把免安装的 trawl.exe 打包上传 =====
+      - name: Package Windows portable zip
+        if: matrix.settings.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          Compress-Archive -Path src-tauri/target/release/trawl.exe -DestinationPath "Trawl-$version-windows-x64-portable.zip" -Force
+          Get-Item "Trawl-$version-windows-x64-portable.zip" | Select-Object Name, Length
+
+      - name: Upload Windows portable zip to release
+        if: matrix.settings.platform == 'windows-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: Trawl-*-windows-x64-portable.zip
+
+  # ============ Android：APK（arm64） ============
+  build-android:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # ubuntu-latest 自带 Android SDK（ANDROID_HOME 已设置），无需额外安装
+      - name: Install Rust with Android targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: 'aarch64-linux-android,armv7-linux-androideabi'
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      # gen/android 未提交时自动生成（ubuntu runner 自带 Android SDK/NDK）
+      - name: Init Android project (if missing)
+        if: ${{ !hashFiles('src-tauri/gen/android/**') }}
+        run: npx tauri android init
+
+      # 解码签名密钥（可选）：在仓库 Secrets 里配置
+      #   ANDROID_KEYSTORE      = keystore 文件的 base64（base64 -w0 my.keystore）
+      #   ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD
+      # 不配置时 APK 用 debug 签名，可直接侧载安装，适合内测分发
+      - name: Decode Android keystore
+        if: env.ANDROID_KEYSTORE != ''
+        id: keystore
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          mkdir -p src-tauri/gen/android/keystore
+          echo "$ANDROID_KEYSTORE" | base64 -d > src-tauri/gen/android/keystore/trawl.keystore
+          echo "keystore_path=src-tauri/gen/android/keystore/trawl.keystore" >> "$GITHUB_OUTPUT"
+
+      - name: Build Android APK (arm64)
+        env:
+          # tauri 官方签名环境变量（未配置签名时为空，走 debug 签名）
+          TAURI_ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.keystore_path }}
+          TAURI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TAURI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TAURI_ANDROID_KEY_PRIVATE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          npx tauri android build --apk --target aarch64
+          find src-tauri/gen/android -name '*.apk' -exec ls -lh {} \;
+
+      - name: Collect APK
+        run: |
+          mkdir -p apks
+          find src-tauri/gen/android -name '*.apk' -exec cp {} apks/ \;
+          ls -lh apks/
+
+      - name: Upload APK to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: apks/*.apk
+
+  # ============ iOS（可选：仅在手动触发且勾选时运行，需签名 secrets） ============
+  build-ios:
+    if: github.event_name == 'workflow_dispatch' && inputs.build_ios == true
+    permissions:
+      contents: write
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust with iOS targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: 'aarch64-apple-ios,aarch64-apple-ios-sim'
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      # gen/apple 未提交时自动生成
+      - name: Init iOS project (if missing)
+        if: ${{ !hashFiles('src-tauri/gen/apple/**') }}
+        run: npx tauri ios init
+
+      # 需要在 Secrets 配置（同 macOS 桌面签名那套）：
+      #   APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD
+      #   APPLE_SIGNING_IDENTITY（iPhone Distribution 证书）
+      #   APPLE_TEAM_ID
+      - name: Decode iOS certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/apple_cert.p12
+          echo "$APPLE_CERTIFICATE" | base64 -d > "$CERT_PATH"
+          security create-keychain -p trawl build.keychain
+          security import "$CERT_PATH" -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security list-keychain -d user -s build.keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k trawl build.keychain
+
+      - name: Build iOS (unsigned dev/sideload)
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          npx tauri ios build --target aarch64-apple-ios --export-method debugging
+          find src-tauri/gen/apple -name '*.ipa' -exec cp {} . \;
+
+      - name: Upload IPA to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: '*.ipa'

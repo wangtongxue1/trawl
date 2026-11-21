@@ -7,8 +7,8 @@ name: Release Trawl
 # 产物：
 #   Windows: .msi / .exe(NSIS) 安装包 + 便携版 zip
 #   macOS:   Apple Silicon (aarch64.dmg) + Intel (x64.dmg)
-#   Android: APK（arm64，可选签名）
-#   iOS:     可选（需配置签名 secrets，见 build_ios 输入）
+#   Android: 暂停（需移动端 UI 重构，Tauri 移动端不支持桌面多 webview API）
+#   iOS:     暂停（同上）
 # 鸿蒙 OS：Tauri 暂不支持 HarmonyOS，无法云端构建（见 README 说明）
 #
 # 说明：不用 tauri-action，改为显式 npx tauri build + gh release upload：
@@ -76,21 +76,33 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      # 仅当 Secrets 真的配置了证书才注入（空字符串也会让 tauri 误去导入 p12 而失败）
+      - name: Prepare signing env (only if configured)
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            {
+              echo "APPLE_CERTIFICATE=${{ secrets.APPLE_CERTIFICATE }}"
+              echo "APPLE_CERTIFICATE_PASSWORD=${{ secrets.APPLE_CERTIFICATE_PASSWORD }}"
+              echo "APPLE_SIGNING_IDENTITY=${{ secrets.APPLE_SIGNING_IDENTITY }}"
+              echo "APPLE_ID=${{ secrets.APPLE_ID }}"
+              echo "APPLE_PASSWORD=${{ secrets.APPLE_PASSWORD }}"
+              echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}"
+            } >> "$GITHUB_ENV"
+            echo "macOS signing enabled"
+          fi
+          if [ -n "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+            {
+              echo "AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}"
+              echo "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}"
+              echo "AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}"
+              echo "AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            } >> "$GITHUB_ENV"
+            echo "Windows Azure signing enabled"
+          fi
+
       - name: Build Trawl (desktop)
         shell: bash
-        env:
-          # ===== macOS 签名与公证（可选：不配置则 ad-hoc 签名，首次打开右键绕过 Gatekeeper）=====
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # ===== Windows 代码签名（可选：配置后不再触发 SmartScreen 警告）=====
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           set -o pipefail
           set +e  # 关闭 GitHub 默认注入的 errexit，否则 npm|tee 一失败就跳出脚本
@@ -157,7 +169,12 @@ jobs:
           gh release upload "v$VERSION" "${FILES[@]}" --clobber
 
   # ============ Android：APK（arm64） ============
+  # ⚠️ 暂时禁用：Tauri 移动端不支持桌面专属的多 webview API（Window::add_child、
+  # Webview::set_bounds/show/hide/close/reparent/set_focus、WindowBuilder::decorations、
+  # minimize/maximize 等），当前「主窗口 + chrome webview + 每标签一个 webview」的
+  # 桌面架构需要为移动端重写为单 webview UI 后才能出 APK（36 处编译错误，见 ci-logs）。
   build-android:
+    if: false
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -256,8 +273,9 @@ jobs:
           gh release upload "v$VERSION" apks/*.apk --clobber
 
   # ============ iOS（可选：仅在手动触发且勾选时运行，需签名 secrets） ============
+  # ⚠️ 暂时禁用：与 Android 相同原因，移动端 UI 重构后再启用
   build-ios:
-    if: github.event_name == 'workflow_dispatch' && inputs.build_ios == true
+    if: false
     permissions:
       contents: write
     runs-on: macos-latest

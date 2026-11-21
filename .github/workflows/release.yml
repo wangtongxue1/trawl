@@ -93,6 +93,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           set -o pipefail
+          set +e  # 关闭 GitHub 默认注入的 errexit，否则 npm|tee 一失败就跳出脚本
           npm run tauri build -- ${{ matrix.settings.args }} 2>&1 | tee build.log
           STATUS=$?
           if [ $STATUS -ne 0 ]; then
@@ -216,6 +217,7 @@ jobs:
           TAURI_ANDROID_KEY_PRIVATE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -o pipefail
+          set +e  # 关闭 GitHub 默认注入的 errexit，否则 npm|tee 一失败就跳出脚本
           npx tauri android build --apk --target aarch64 2>&1 | tee android-build.log
           STATUS=$?
           if [ $STATUS -ne 0 ]; then
@@ -307,6 +309,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
+          set +e  # 关闭 GitHub 默认注入的 errexit，否则 npm|tee 一失败就跳出脚本
           npx tauri ios build --target aarch64-apple-ios --export-method debugging 2>&1 | tee ios-build.log || {
             tail -50 ios-build.log | while IFS= read -r line; do
               line=$(printf '%s' "$line" | cut -c1-300)

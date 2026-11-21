@@ -173,9 +173,9 @@ body {
 <script>
 const { invoke } = window.__TAURI__.core;
 const DEFAULT_ENGINES = [
-  { name: '元宝搜索', template: 'https://so.qq.com/?query={query}' },
-  { name: '百度', template: 'https://www.baidu.com/s?wd={query}' },
   { name: 'Bing', template: 'https://www.bing.com/search?q={query}' },
+  { name: '搜狗搜索', template: 'https://www.sogou.com/web?query={query}' },
+  { name: '百度', template: 'https://www.baidu.com/s?wd={query}' },
   { name: 'Google', template: 'https://www.google.com/search?q={query}' },
 ];
 const SITES = [
@@ -188,11 +188,23 @@ const SITES = [
 ];
 
 function cfg() {
-  try {
-    const s = JSON.parse(localStorage.getItem('trawl-settings') || 'null');
-    if (s && s.engines && s.engines.length) return s;
-  } catch {}
-  return { engines: DEFAULT_ENGINES, defaultEngine: '元宝搜索' };
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('trawl-settings') || 'null'); } catch {}
+  if (s && s.engines && s.engines.length) {
+    // 元宝搜索（so.qq.com）无法通过 URL 直达结果页，迁移为搜狗
+    let migrated = false;
+    for (const e of s.engines) {
+      if (e.template && e.template.includes('so.qq.com')) {
+        e.name = '搜狗搜索';
+        e.template = 'https://www.sogou.com/web?query={query}';
+        migrated = true;
+      }
+    }
+    if (s.defaultEngine === '元宝搜索') { s.defaultEngine = 'Bing'; migrated = true; }
+    if (migrated) { try { localStorage.setItem('trawl-settings', JSON.stringify(s)); } catch {} }
+    return s;
+  }
+  return { engines: DEFAULT_ENGINES, defaultEngine: 'Bing' };
 }
 function engine() {
   const s = cfg();
@@ -216,6 +228,7 @@ function resolve(q) {
 
 // 搜索引擎真实图标：本地内置的用图片，网络受限的用官方品牌 SVG，杜绝远程请求导致的加载慢
 const ENGINE_ICONS = {
+  '搜狗搜索': { icon: 'icons/sogou.ico', color: '#ff6a00', ch: '搜' },
   '元宝搜索': { icon: 'icons/yuanbao.png', color: '#10b981', ch: '元' },
   '百度': { icon: 'icons/baidu.png', color: '#3b82f6', ch: '百' },
   'Bing': { icon: 'icons/bing.png', color: '#0ea5e9', ch: 'B' },

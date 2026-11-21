@@ -436,7 +436,7 @@ kbd {
       <div class="nav-item" data-sec="about" data-kw="关于 版本 更新 检查升级"><svg class="ic"><use href="#i-info"/></svg>关于 Trawl</div>
       <div class="search-empty" id="nav-empty">没有匹配的设置项</div>
     </nav>
-    <div class="sidebar-foot">Trawl Browser · v0.7.17</div>
+    <div class="sidebar-foot">Trawl Browser · v0.7.18</div>
   </aside>
 
   <main class="main">
@@ -858,7 +858,7 @@ kbd {
         <div class="about-line">
           <img class="about-logo" src="logo/trawl-icon.svg" alt="">
           <div>
-            <h2>Trawl 元搜浏览器 <span class="badge" id="about-ver">v0.7.17</span></h2>
+            <h2>Trawl 元搜浏览器 <span class="badge" id="about-ver">v0.7.18</span></h2>
             <p>基于 Tauri 2 + WebView2。<br>把浏览器做薄，把搜索做快。Less browser. More search.<br>Trawl 取意「拖网」——一张网撒过所有搜索引擎，捞回全部结果再筛。</p>
           </div>
         </div>
@@ -913,12 +913,12 @@ function withDefaults(raw) {
   const s = Object.assign({}, DEFAULTS, raw || {});
   if (!s.engines || !s.engines.length) {
     s.engines = [
-      { name: '元宝搜索', template: 'https://so.qq.com/?query={query}' },
-      { name: '百度', template: 'https://www.baidu.com/s?wd={query}' },
       { name: 'Bing', template: 'https://www.bing.com/search?q={query}' },
+      { name: '搜狗搜索', template: 'https://www.sogou.com/web?query={query}' },
+      { name: '百度', template: 'https://www.baidu.com/s?wd={query}' },
       { name: 'Google', template: 'https://www.google.com/search?q={query}' },
     ];
-    s.defaultEngine = s.defaultEngine || '元宝搜索';
+    s.defaultEngine = s.defaultEngine || 'Bing';
   }
   return s;
 }
@@ -1007,7 +1007,7 @@ function fillAiEngine() {
 
 /* ---------- 搜索引擎 ---------- */
 const ENGINE_ICONS = {
-  '元宝搜索': 'icons/yuanbao.png', '百度': 'icons/baidu.png', 'Bing': 'icons/bing.png',
+  '搜狗搜索': 'icons/sogou.ico', '元宝搜索': 'icons/yuanbao.png', '百度': 'icons/baidu.png', 'Bing': 'icons/bing.png',
 };
 function renderEngines() {
   const list = document.getElementById('engine-list');

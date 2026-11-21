@@ -226,12 +226,12 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             engines: vec![
-                SearchEngine { name: "元宝搜索".into(), template: "https://so.qq.com/?query={query}".into() },
-                SearchEngine { name: "百度".into(), template: "https://www.baidu.com/s?wd={query}".into() },
                 SearchEngine { name: "Bing".into(), template: "https://www.bing.com/search?q={query}".into() },
+                SearchEngine { name: "搜狗搜索".into(), template: "https://www.sogou.com/web?query={query}".into() },
+                SearchEngine { name: "百度".into(), template: "https://www.baidu.com/s?wd={query}".into() },
                 SearchEngine { name: "Google".into(), template: "https://www.google.com/search?q={query}".into() },
             ],
-            default_engine: "元宝搜索".into(),
+            default_engine: "Bing".into(),
             theme: "light".into(),
             accent: "green".into(),
             newtab: "internal".into(),
@@ -589,10 +589,10 @@ fn resolve_input(input: &str, settings: &Settings) -> String {
     let q = encode_query(s);
     // 兜底：引擎列表被外部改空 / 模板被清空时不能崩，落到元宝搜索
     let Some(engine) = engine else {
-        return format!("https://so.qq.com/?query={}", q);
+        return format!("https://www.bing.com/search?q={}", q);
     };
     if engine.template.is_empty() {
-        return format!("https://so.qq.com/?query={}", q);
+        return format!("https://www.bing.com/search?q={}", q);
     }
     if engine.template.contains("{query}") {
         engine.template.replace("{query}", &q)
@@ -3231,8 +3231,13 @@ fn load_settings() -> Settings {
     for e in &mut settings.engines {
         if e.name == "必应" { e.name = "Bing".into(); }
         if e.name == "谷歌" { e.name = "Google".into(); }
-        // 元宝搜索旧模板 so.qq.com/s?w= 会被 302 回首页（无结果页），迁移为 ?query=
-        if e.template == "https://so.qq.com/s?w={query}" { e.template = "https://so.qq.com/?query={query}".into(); recovered = true; }
+        // 元宝搜索（so.qq.com）是纯 SPA：?query=、/s?w= 等任何 URL 参数都被忽略，
+        // 无法直达结果页。统一切换为搜狗搜索（同属腾讯，URL 直出搜索结果）。
+        if e.template.contains("so.qq.com") {
+            e.name = "搜狗搜索".into();
+            e.template = "https://www.sogou.com/web?query={query}".into();
+            recovered = true;
+        }
     }
     // 引擎列表被外部改空时补回默认，否则地址栏搜索无处可去
     let before = settings.engines.len();
@@ -3245,6 +3250,7 @@ fn load_settings() -> Settings {
         recovered = true;
     }
     if settings.default_engine == "必应" { settings.default_engine = "Bing".into(); }
+    if settings.default_engine == "元宝搜索" { settings.default_engine = "Bing".into(); recovered = true; }
     if settings.default_engine == "谷歌" { settings.default_engine = "Google".into(); }
     if !settings.engines.iter().any(|e| e.name == settings.default_engine) {
         settings.default_engine = settings.engines[0].name.clone();
@@ -5443,9 +5449,9 @@ mod tests {
 
     #[test]
     fn keyword_uses_default_engine() {
-        let s = settings_with(vec![engine("元宝搜索", "https://so.qq.com/?query={query}")], "元宝搜索");
+        let s = settings_with(vec![engine("Bing", "https://www.bing.com/search?q={query}")], "Bing");
         let out = resolve_input("你好 世界", &s);
-        assert!(out.starts_with("https://so.qq.com/?query="), "{}", out);
+        assert!(out.starts_with("https://www.bing.com/search?q="), "{}", out);
         assert!(out.contains("%E4%BD%A0%E5%A5%BD"), "中文应被编码: {}", out);
     }
 
@@ -5466,14 +5472,14 @@ mod tests {
     fn empty_engine_list_falls_back() {
         let s = settings_with(vec![], "");
         let out = resolve_input("hello", &s);
-        assert!(out.starts_with("https://so.qq.com/?query="), "{}", out);
+        assert!(out.starts_with("https://www.bing.com/search?q="), "{}", out);
     }
 
     #[test]
     fn empty_template_falls_back() {
         let s = settings_with(vec![engine("坏引擎", "")], "坏引擎");
         let out = resolve_input("hello", &s);
-        assert!(out.starts_with("https://so.qq.com/?query="), "{}", out);
+        assert!(out.starts_with("https://www.bing.com/search?q="), "{}", out);
     }
 
     /// 超长输入不应 panic / 不应截断出错
@@ -5482,7 +5488,7 @@ mod tests {
         let s = Settings::default();
         let q = "长".repeat(5000);
         let out = resolve_input(&q, &s);
-        assert!(out.starts_with("https://so.qq.com/?query="));
+        assert!(out.starts_with("https://www.bing.com/search?q="));
         assert!(out.len() > 5000);
     }
 
@@ -5491,7 +5497,7 @@ mod tests {
     fn javascript_scheme_is_searched_not_executed() {
         let s = Settings::default();
         let out = resolve_input("javascript:alert(1)", &s);
-        assert!(out.starts_with("https://so.qq.com/?query="), "{}", out);
+        assert!(out.starts_with("https://www.bing.com/search?q="), "{}", out);
     }
 
     #[test]

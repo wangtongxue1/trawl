@@ -10,6 +10,10 @@ name: Release Trawl
 #   Android: APK（arm64，可选签名）
 #   iOS:     可选（需配置签名 secrets，见 build_ios 输入）
 # 鸿蒙 OS：Tauri 暂不支持 HarmonyOS，无法云端构建（见 README 说明）
+#
+# 说明：不用 tauri-action，改为显式 npx tauri build + gh release upload：
+#   - 构建失败时把日志尾部输出成 ::error:: 注解（run 页面直接可见）
+#   - 上传统一走 gh CLI，避免第三方 action 的权限兼容问题
 
 on:
   push:
@@ -27,6 +31,10 @@ on:
 permissions:
   contents: write
 
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GH_REPO: ${{ github.repository }}
+
 jobs:
   # ============ 桌面端：Windows + macOS ============
   build-desktop:
@@ -36,7 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         settings:
-          # Windows：MSI + NSIS 安装包（tauri.conf.json bundle.targets）
+          # Windows：MSI + NSIS 安装包（tauri.conf.json bundle.targets = all）
           - platform: 'windows-latest'
             args: ''
           # macOS Apple Silicon (M1/M2/M3/M4)
@@ -68,11 +76,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
-      - name: Build and upload release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Trawl (desktop)
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ===== macOS 签名与公证（可选：不配置也能出包，用户首次打开需右键绕过 Gatekeeper）=====
+          # ===== macOS 签名与公证（可选：不配置则 ad-hoc 签名，首次打开右键绕过 Gatekeeper）=====
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -84,15 +91,20 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        with:
-          tagName: v__VERSION__
-          releaseName: 'Trawl 元搜浏览器 v__VERSION__'
-          releaseBody: 'Trawl 元搜浏览器新版本。Windows 用 .msi/.exe；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。'
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.settings.args }}
+        run: |
+          set -o pipefail
+          npm run tauri build -- ${{ matrix.settings.args }} 2>&1 | tee build.log
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "Build failed (exit $STATUS)，错误尾部如下："
+            tail -50 build.log | while IFS= read -r line; do
+              line=$(printf '%s' "$line" | cut -c1-300)
+              echo "::error::$line"
+            done
+            exit $STATUS
+          fi
 
-      # ===== Windows 便携版 zip：把免安装的 trawl.exe 打包上传 =====
+      # ===== Windows 便携版 zip：把免安装的 trawl.exe 打包 =====
       - name: Package Windows portable zip
         if: matrix.settings.platform == 'windows-latest'
         shell: pwsh
@@ -101,12 +113,40 @@ jobs:
           Compress-Archive -Path src-tauri/target/release/trawl.exe -DestinationPath "Trawl-$version-windows-x64-portable.zip" -Force
           Get-Item "Trawl-$version-windows-x64-portable.zip" | Select-Object Name, Length
 
-      - name: Upload Windows portable zip to release
-        if: matrix.settings.platform == 'windows-latest'
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: Trawl-*-windows-x64-portable.zip
+      # 解析 bundle 目录（带 --target 时产物在 target/<triple>/ 下）
+      - name: Resolve bundle dir
+        id: bundle
+        shell: bash
+        run: |
+          TARGET=$(printf '%s' "${{ matrix.settings.args }}" | sed -n 's/--target \([a-zA-Z0-9_-]*\)/\1/p')
+          if [ -n "$TARGET" ]; then
+            echo "dir=src-tauri/target/$TARGET/release/bundle" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=src-tauri/target/release/bundle" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 确保草稿 Release 存在（多 job 并发上传共用同一个）
+      - name: Ensure draft release
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          gh release view "v$VERSION" >/dev/null 2>&1 || \
+            gh release create "v$VERSION" --draft \
+              --title "Trawl 元搜浏览器 v$VERSION" \
+              --notes "Trawl 元搜浏览器新版本。Windows 用 .msi/.exe 或便携版 zip；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。"
+
+      # 上传平台产物（.msi/.exe/.dmg/便携 zip）
+      - name: Upload desktop artifacts
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          B="${{ steps.bundle.outputs.dir }}"
+          if [ "${{ matrix.settings.platform }}" = "windows-latest" ]; then
+            FILES=( "$B/msi/"*.msi "$B/nsis/"*.exe Trawl-*-windows-x64-portable.zip )
+          else
+            FILES=( "$B/dmg/"*.dmg )
+          fi
+          gh release upload "v$VERSION" "${FILES[@]}" --clobber
 
   # ============ Android：APK（arm64） ============
   build-android:
@@ -131,7 +171,7 @@ jobs:
       - name: Install Rust with Android targets
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: 'aarch64-linux-android,armv7-linux-androideabi'
+          targets: 'aarch64-linux-android'
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -168,7 +208,17 @@ jobs:
           TAURI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           TAURI_ANDROID_KEY_PRIVATE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          npx tauri android build --apk --target aarch64
+          set -o pipefail
+          npx tauri android build --apk --target aarch64 2>&1 | tee android-build.log
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "Android build failed (exit $STATUS)，错误尾部如下："
+            grep -nE 'error|Error|FAILURE|Exception' android-build.log | tail -30 | while IFS= read -r line; do
+              line=$(printf '%s' "$line" | cut -c1-300)
+              echo "::error::$line"
+            done
+            exit $STATUS
+          fi
           find src-tauri/gen/android -name '*.apk' -exec ls -lh {} \;
 
       - name: Collect APK
@@ -177,11 +227,18 @@ jobs:
           find src-tauri/gen/android -name '*.apk' -exec cp {} apks/ \;
           ls -lh apks/
 
+      - name: Ensure draft release
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          gh release view "v$VERSION" >/dev/null 2>&1 || \
+            gh release create "v$VERSION" --draft \
+              --title "Trawl 元搜浏览器 v$VERSION" \
+              --notes "Trawl 元搜浏览器新版本。Windows 用 .msi/.exe 或便携版 zip；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。"
+
       - name: Upload APK to release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: apks/*.apk
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          gh release upload "v$VERSION" apks/*.apk --clobber
 
   # ============ iOS（可选：仅在手动触发且勾选时运行，需签名 secrets） ============
   build-ios:
@@ -236,11 +293,25 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          npx tauri ios build --target aarch64-apple-ios --export-method debugging
+          set -o pipefail
+          npx tauri ios build --target aarch64-apple-ios --export-method debugging 2>&1 | tee ios-build.log || {
+            tail -50 ios-build.log | while IFS= read -r line; do
+              line=$(printf '%s' "$line" | cut -c1-300)
+              echo "::error::$line"
+            done
+            exit 1
+          }
           find src-tauri/gen/apple -name '*.ipa' -exec cp {} . \;
 
+      - name: Ensure draft release
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          gh release view "v$VERSION" >/dev/null 2>&1 || \
+            gh release create "v$VERSION" --draft \
+              --title "Trawl 元搜浏览器 v$VERSION" \
+              --notes "Trawl 元搜浏览器新版本。"
+
       - name: Upload IPA to release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: '*.ipa'
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          gh release upload "v$VERSION" ./*.ipa --clobber

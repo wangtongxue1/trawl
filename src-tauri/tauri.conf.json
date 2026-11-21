@@ -18,6 +18,7 @@
     "targets": "all",
     "icon": [
       "icons/trawl.ico",
+      "icons/icon.icns",
       "icons/trawl-icon-128.png",
       "icons/trawl-icon-32.png"
     ],

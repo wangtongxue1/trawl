@@ -96,7 +96,13 @@ jobs:
           npm run tauri build -- ${{ matrix.settings.args }} 2>&1 | tee build.log
           STATUS=$?
           if [ $STATUS -ne 0 ]; then
-            echo "Build failed (exit $STATUS)，错误尾部如下："
+            # 把构建日志上传到仓库 ci-logs 分支（gh API，无需 git 凭据）
+            SHA=$(git rev-parse HEAD)
+            gh api -X POST "repos/$GH_REPO/git/refs" -f ref=refs/heads/ci-logs -f sha=$SHA >/dev/null 2>&1 || true
+            B64=$(base64 < build.log | tr -d '\n')
+            gh api -X PUT "repos/$GH_REPO/contents/logs/desktop-$RUNNER_OS-$GITHUB_RUN_ID.log" \
+              -f message="ci: desktop build log" -f content="$B64" -f branch=ci-logs >/dev/null 2>&1 || true
+            echo "Build failed (exit $STATUS)，日志已尝试上传到 ci-logs 分支"
             tail -50 build.log | while IFS= read -r line; do
               line=$(printf '%s' "$line" | cut -c1-300)
               echo "::error::$line"
@@ -133,7 +139,8 @@ jobs:
           gh release view "v$VERSION" >/dev/null 2>&1 || \
             gh release create "v$VERSION" --draft \
               --title "Trawl 元搜浏览器 v$VERSION" \
-              --notes "Trawl 元搜浏览器新版本。Windows 用 .msi/.exe 或便携版 zip；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。"
+              --notes "Trawl 元搜浏览器新版本。Windows 用 .msi/.exe 或便携版 zip；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。" 2>/dev/null || true
+          gh release view "v$VERSION" >/dev/null
 
       # 上传平台产物（.msi/.exe/.dmg/便携 zip）
       - name: Upload desktop artifacts
@@ -212,7 +219,12 @@ jobs:
           npx tauri android build --apk --target aarch64 2>&1 | tee android-build.log
           STATUS=$?
           if [ $STATUS -ne 0 ]; then
-            echo "Android build failed (exit $STATUS)，错误尾部如下："
+            SHA=$(git rev-parse HEAD)
+            gh api -X POST "repos/$GH_REPO/git/refs" -f ref=refs/heads/ci-logs -f sha=$SHA >/dev/null 2>&1 || true
+            B64=$(base64 < android-build.log | tr -d '\n')
+            gh api -X PUT "repos/$GH_REPO/contents/logs/android-$GITHUB_RUN_ID.log" \
+              -f message="ci: android build log" -f content="$B64" -f branch=ci-logs >/dev/null 2>&1 || true
+            echo "Android build failed (exit $STATUS)，日志已尝试上传到 ci-logs 分支"
             grep -nE 'error|Error|FAILURE|Exception' android-build.log | tail -30 | while IFS= read -r line; do
               line=$(printf '%s' "$line" | cut -c1-300)
               echo "::error::$line"
@@ -233,7 +245,8 @@ jobs:
           gh release view "v$VERSION" >/dev/null 2>&1 || \
             gh release create "v$VERSION" --draft \
               --title "Trawl 元搜浏览器 v$VERSION" \
-              --notes "Trawl 元搜浏览器新版本。Windows 用 .msi/.exe 或便携版 zip；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。"
+              --notes "Trawl 元搜浏览器新版本。Windows 用 .msi/.exe 或便携版 zip；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。" 2>/dev/null || true
+          gh release view "v$VERSION" >/dev/null
 
       - name: Upload APK to release
         run: |
@@ -309,7 +322,8 @@ jobs:
           gh release view "v$VERSION" >/dev/null 2>&1 || \
             gh release create "v$VERSION" --draft \
               --title "Trawl 元搜浏览器 v$VERSION" \
-              --notes "Trawl 元搜浏览器新版本。"
+              --notes "Trawl 元搜浏览器新版本。" 2>/dev/null || true
+          gh release view "v$VERSION" >/dev/null
 
       - name: Upload IPA to release
         run: |

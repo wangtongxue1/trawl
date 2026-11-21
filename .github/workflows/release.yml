@@ -232,7 +232,15 @@ jobs:
         run: |
           set -o pipefail
           set +e  # 关闭 GitHub 默认注入的 errexit，否则 npm|tee 一失败就跳出脚本
-          npx tauri android build --apk --target aarch64 2>&1 | tee android-build.log
+          # 未配置签名 secrets 时，release 变体产出的 APK 是 unsigned（无法安装），
+          # 因此退回 --debug：由 Android 自动生成的 debug keystore 签名，可直接侧载。
+          if [ -n "$TAURI_ANDROID_KEYSTORE_PATH" ]; then
+            MODE=""
+          else
+            MODE="--debug"
+            echo "未配置签名密钥，构建 debug 签名 APK（可侧载内测）"
+          fi
+          npx tauri android build --apk --target aarch64 $MODE 2>&1 | tee android-build.log
           STATUS=$?
           if [ $STATUS -ne 0 ]; then
             SHA=$(git rev-parse HEAD)

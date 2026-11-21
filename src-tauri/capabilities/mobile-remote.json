@@ -19,6 +19,7 @@
     ]
   },
   "permissions": [
+    "allow-mob-home",
     "allow-mob-report"
   ]
 }

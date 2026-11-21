@@ -5061,23 +5061,29 @@ struct MobStatePayload {
 #[cfg(mobile)]
 static MOB_DATA_ROOT: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 
-/// 移动端本地页面地址：Android/iOS 的 Tauri 本地源是 tauri://localhost
+/// 移动端本地资源协议地址。
+/// Tauri 内部规则（manager::get_app_url）：Android/Windows 是
+/// `http://tauri.localhost/`，其它平台是 `tauri://localhost/`。
+/// 主页首次加载用 WebviewUrl::App 让 Tauri 自己解析，这里的地址只用于
+/// 「回主页」跳转，运行时还会被 MOB_HOME（真实解析结果）覆盖。
 #[cfg(mobile)]
-fn mob_page_url(path: &str) -> tauri::Url {
-    tauri::Url::parse(&format!(
-        "tauri://localhost/{}?v={}",
-        path,
-        env!("CARGO_PKG_VERSION")
-    ))
-    .expect("mob page url")
+fn mob_base() -> &'static str {
+    if cfg!(any(windows, target_os = "android")) {
+        "http://tauri.localhost/"
+    } else {
+        "tauri://localhost/"
+    }
 }
 
 #[cfg(mobile)]
+static MOB_HOME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+#[cfg(mobile)]
 fn mob_home_url() -> String {
-    format!(
-        "tauri://localhost/mobile.html?v={}",
-        env!("CARGO_PKG_VERSION")
-    )
+    if let Some(h) = MOB_HOME.get() {
+        return h.clone();
+    }
+    format!("{}mobile.html", mob_base())
 }
 
 /// 注入到所有页面的初始化脚本：本地页（tauri://localhost）不注入浮层，
@@ -5105,7 +5111,15 @@ fn mob_init_js() -> String {
     const homeBtn = document.createElement('div');
     homeBtn.textContent = '⌂ Trawl';
     homeBtn.style.cssText = 'height:30px;line-height:30px;font-size:13px;font-weight:600;color:#1a73e8;background:#fff;border:1px solid #dde3ea;border-radius:15px;cursor:pointer;user-select:none;padding:0 12px;';
-    homeBtn.addEventListener('click', () => { location.href = HOME; });
+    homeBtn.addEventListener('click', () => {
+      if (invoke) {
+        try {
+          Promise.resolve(invoke('mob_home')).catch(() => { location.href = HOME; });
+          return;
+        } catch (e) {}
+      }
+      location.href = HOME;
+    });
     bar.appendChild(back);
     bar.appendChild(homeBtn);
     document.body.appendChild(bar);
@@ -5362,15 +5376,21 @@ fn mobile_run() {
                 let _ = MOB_DATA_ROOT.set(dir.join("data"));
             }
             start_state_worker(app.handle().clone());
-            tauri::WebviewWindowBuilder::new(
+            // 用 WebviewUrl::App 交给 Tauri 解析成平台正确的本地资源地址
+            // （Android: http://tauri.localhost/mobile.html）
+            let win = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
-                WebviewUrl::External(mob_page_url("mobile.html")),
+                WebviewUrl::App(std::path::PathBuf::from("mobile.html")),
             )
             .title("Trawl")
             .initialization_script(&mob_init_js())
             .build()
             .map_err(|e| format!("创建主窗口失败: {e}"))?;
+            // 记录真实的主页地址，供注入浮层的「回主页」使用
+            if let Ok(u) = win.url() {
+                let _ = MOB_HOME.set(u.to_string());
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

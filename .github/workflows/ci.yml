@@ -34,12 +34,14 @@ jobs:
         working-directory: src-tauri
         run: cargo test --release
 
-      # 失败时把编译错误写到 Job Summary，方便远程排查
+      # 失败时把编译错误以注解形式输出（显示在 run 页面，便于远程排查）
       - name: Collect check errors
         if: failure()
         working-directory: src-tauri
+        shell: bash
         run: |
-          echo "## ${{ matrix.os }} cargo check 错误" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cargo check --all-targets 2>&1 | grep -E "^error|error\[E|^  -->|cannot find|unresolved" | head -40 >> "$GITHUB_STEP_SUMMARY" || true
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cargo check --all-targets 2>&1 | grep -E '^error(\[E[0-9]+\])?:|^  -->' | head -30 | while IFS= read -r line; do
+            safe=$(printf '%s' "$line" | tr '\r' ' ' | cut -c1-380)
+            echo "::error::$safe"
+          done
+          cargo check --all-targets 2>&1 | tail -5 || true

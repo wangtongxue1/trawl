@@ -1,0 +1,652 @@
+        Info Using installed NDK: /usr/local/lib/android/sdk/ndk/30.0.16248370
+        Info Looking up installed tauri packages to check mismatched versions...
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m unicode-ident v1.0.27
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m libc v0.2.191
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m siphasher v1.0.4
+[1m[92m   Compiling[0m fastrand v2.5.0
+[1m[92m   Compiling[0m icu_properties_data v2.4.0
+[1m[92m   Compiling[0m icu_normalizer_data v2.4.0
+[1m[92m   Compiling[0m phf_shared v0.13.1
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m phf_generator v0.13.1
+[1m[92m   Compiling[0m stable_deref_trait v1.2.1
+[1m[92m   Compiling[0m parking_lot_core v0.9.12
+[1m[92m   Compiling[0m cfg-if v1.0.5
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m syn v3.0.10
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m smallvec v1.16.6
+[1m[92m   Compiling[0m memchr v2.8.3
+[1m[92m   Compiling[0m winnow v1.0.5
+[1m[92m   Compiling[0m toml_datetime v1.1.3+spec-1.1.0
+[1m[92m   Compiling[0m synstructure v0.14.0
+[1m[92m   Compiling[0m toml_parser v1.1.5+spec-1.1.0
+[1m[92m   Compiling[0m thiserror v2.0.21
+[1m[92m   Compiling[0m typeid v1.0.3
+[1m[92m   Compiling[0m equivalent v1.0.3
+[1m[92m   Compiling[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m itoa v1.0.19
+[1m[92m   Compiling[0m num-conv v0.2.2
+[1m[92m   Compiling[0m time-core v0.1.9
+[1m[92m   Compiling[0m indexmap v2.14.2
+[1m[92m   Compiling[0m phf_codegen v0.13.1
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m phf_macros v0.13.1
+[1m[92m   Compiling[0m zerofrom-derive v0.1.8
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m yoke-derive v0.8.4
+[1m[92m   Compiling[0m zerovec-derive v0.11.7
+[1m[92m   Compiling[0m displaydoc v0.2.7
+[1m[92m   Compiling[0m zerofrom v0.1.8
+[1m[92m   Compiling[0m yoke v0.8.4
+[1m[92m   Compiling[0m zerovec v0.11.9
+[1m[92m   Compiling[0m thiserror-impl v2.0.21
+[1m[92m   Compiling[0m tinystr v0.8.5
+[1m[92m   Compiling[0m litemap v0.8.3
+[1m[92m   Compiling[0m utf_types v1.0.0
+[1m[92m   Compiling[0m ident_case v1.0.1
+[1m[92m   Compiling[0m writeable v0.6.4
+[1m[92m   Compiling[0m erased-serde v0.4.11
+[1m[92m   Compiling[0m icu_locale_core v2.4.0
+[1m[92m   Compiling[0m utf8_iter v1.1.0
+[1m[92m   Compiling[0m darling_core v0.24.1
+[1m[92m   Compiling[0m bytes v1.12.2
+[1m[92m   Compiling[0m potential_utf v0.1.6
+[1m[92m   Compiling[0m zerotrie v0.2.5
+[1m[92m   Compiling[0m cssparser-macros v0.7.1
+[1m[92m   Compiling[0m derive_more-impl v2.1.1
+[1m[92m   Compiling[0m icu_provider v2.4.0
+[1m[92m   Compiling[0m icu_collections v2.4.0
+[1m[92m   Compiling[0m phf_shared v0.14.0
+[1m[92m   Compiling[0m new_debug_unreachable v1.0.6
+[1m[92m   Compiling[0m anyhow v1.0.104
+[1m[92m   Compiling[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m lock_api v0.4.14
+[1m[92m   Compiling[0m phf_generator v0.14.0
+[1m[92m   Compiling[0m phf v0.13.1
+[1m[92m   Compiling[0m string_cache_codegen v0.6.1
+[1m[92m   Compiling[0m precomputed-hash v0.1.1
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m   Compiling[0m web_atoms v0.2.6
+[1m[92m   Compiling[0m parking_lot v0.12.5
+[1m[92m   Compiling[0m icu_properties v2.4.0
+[1m[92m   Compiling[0m icu_normalizer v2.4.0
+[1m[92m   Compiling[0m darling_macro v0.24.1
+[1m[92m   Compiling[0m darling v0.24.1
+[1m[92m   Compiling[0m serde_with_macros v3.24.0
+[1m[92m   Compiling[0m semver v1.0.28
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[92m   Compiling[0m idna_adapter v1.2.2
+[1m[92m   Compiling[0m string_cache v0.9.0
+[1m[92m   Compiling[0m serde_spanned v1.1.3
+[1m[92m   Compiling[0m log v0.4.35
+[1m[92m   Compiling[0m bitflags v2.13.2
+[1m[92m   Compiling[0m dtoa v1.0.11
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m   Compiling[0m toml_writer v1.2.0+spec-1.1.0
+[1m[92m   Compiling[0m percent-encoding v2.3.2
+[1m[92m   Compiling[0m toml v1.2.1+spec-1.1.0
+[1m[92m   Compiling[0m form_urlencoded v1.2.2
+[1m[92m   Compiling[0m dtoa-short v0.3.5
+[1m[92m   Compiling[0m indexmap v1.9.3
+[1m[92m   Compiling[0m uuid v1.29.3
+[1m[92m   Compiling[0m idna v1.1.0
+[1m[92m   Compiling[0m tendril v0.5.1
+[1m[92m   Compiling[0m selectors v0.38.0
+[1m[92m   Compiling[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m   Compiling[0m camino v1.2.6
+[1m[92m   Compiling[0m alloc-no-stdlib v3.0.0
+[1m[92m   Compiling[0m alloc-stdlib v0.3.0
+[1m[92m   Compiling[0m markup5ever v0.39.0
+[1m[92m   Compiling[0m url v2.5.8
+[1m[92m   Compiling[0m cssparser v0.37.0
+[1m[92m   Compiling[0m regex-automata v0.4.19
+[1m[92m   Compiling[0m derive_more v2.1.1
+[1m[92m   Compiling[0m http v1.5.0
+[1m[92m   Compiling[0m serde_derive_internals v0.29.1
+[1m[92m   Compiling[0m servo_arc v0.4.3
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m fnv v1.0.7
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m hashbrown v0.12.3
+[1m[92m   Compiling[0m deranged v0.5.9
+[1m[92m   Compiling[0m powerfmt v0.2.1
+[1m[92m   Compiling[0m web-time v1.1.0
+[1m[92m   Compiling[0m futures-core v0.3.34
+[1m[92m   Compiling[0m schemars v0.8.22
+[1m[92m   Compiling[0m pin-project-lite v0.2.17
+[1m[92m   Compiling[0m schemars_derive v0.8.22
+[1m[92m   Compiling[0m regex v1.13.2
+[1m[92m   Compiling[0m cfb v0.14.0
+[1m[92m   Compiling[0m time v0.3.55
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m html5ever v0.39.0
+[1m[92m   Compiling[0m brotli-decompressor v6.3.2
+[1m[92m   Compiling[0m jsonptr v0.7.1
+[1m[92m   Compiling[0m phf_macros v0.14.0
+[1m[92m   Compiling[0m cargo-platform v0.1.9
+[1m[92m   Compiling[0m jni-sys-macros v0.4.1
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m jni-sys v0.3.1
+[1m[92m   Compiling[0m dunce v1.0.5
+[1m[92m   Compiling[0m tauri-utils v2.10.4
+[1m[92m   Compiling[0m dyn-clone v1.0.20
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m same-file v1.0.6
+[1m[92m   Compiling[0m walkdir v2.5.0
+[1m[92m   Compiling[0m plist v1.10.4
+[1m[92m   Compiling[0m dom_query v0.28.0
+[1m[92m   Compiling[0m jni-sys v0.4.1
+[1m[92m   Compiling[0m phf v0.14.0
+[1m[92m   Compiling[0m brotli v9.1.3
+[1m[92m   Compiling[0m cargo_metadata v0.19.2
+[1m[92m   Compiling[0m json-patch v4.2.0
+[1m[92m   Compiling[0m serde-untagged v0.1.9
+[1m[92m   Compiling[0m infer v0.22.0
+[1m[92m   Compiling[0m urlpattern v0.6.0
+[1m[92m   Compiling[0m serde_with v3.24.0
+[1m[92m   Compiling[0m generic-array v0.14.7
+[1m[92m   Compiling[0m string_cache_codegen v0.11.2
+[1m[92m   Compiling[0m phf_codegen v0.14.0
+[1m[92m   Compiling[0m thiserror v1.0.69
+[1m[92m   Compiling[0m glob v0.3.4
+[1m[92m   Compiling[0m ctor v1.0.14
+[1m[92m   Compiling[0m simd-adler32 v0.3.10
+[1m[92m   Compiling[0m web_atoms v0.3.0
+[1m[92m   Compiling[0m toml_edit v0.25.19+spec-1.1.0
+[1m[92m   Compiling[0m thiserror-impl v1.0.69
+[1m[92m   Compiling[0m time-macros v0.2.32
+[1m[92m   Compiling[0m mio v1.2.5
+[1m[92m   Compiling[0m socket2 v0.6.5
+[1m[92m   Compiling[0m adler2 v2.0.1
+[1m[92m   Compiling[0m crc32fast v1.5.5
+[1m[92m   Compiling[0m typenum v1.20.1
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m   Compiling[0m tokio v1.54.1
+[1m[92m   Compiling[0m hybrid-array v0.4.15
+[1m[92m   Compiling[0m proc-macro-crate v3.5.0
+[1m[92m   Compiling[0m string_cache v0.11.0
+[1m[92m   Compiling[0m heck v0.5.0
+[1m[92m   Compiling[0m crossbeam-utils v0.8.23
+[1m[92m   Compiling[0m num_enum_derive v0.7.6
+[1m[92m   Compiling[0m miniz_oxide v0.9.1
+[1m[92m   Compiling[0m http-body v1.1.0
+[1m[92m   Compiling[0m cookie v0.18.2
+[1m[92m   Compiling[0m combine v4.6.9
+[1m[92m   Compiling[0m cesu8 v1.1.0
+[1m[92m   Compiling[0m futures-task v0.3.34
+[1m[92m   Compiling[0m find-msvc-tools v0.1.15
+[1m[92m   Compiling[0m raw-window-handle v0.6.2
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m   Compiling[0m slab v0.4.12
+[1m[92m   Compiling[0m futures-util v0.3.34
+[1m[92m   Compiling[0m cc v1.11.2
+[1m[92m   Compiling[0m jni v0.21.1
+[1m[92m   Compiling[0m flate2 v1.1.11
+[1m[92m   Compiling[0m markup5ever v0.40.0
+[1m[92m   Compiling[0m num_enum v0.7.6
+[1m[92m   Compiling[0m cssparser v0.38.0
+[1m[92m   Compiling[0m crypto-common v0.2.2
+[1m[92m   Compiling[0m block-buffer v0.12.1
+[1m[92m   Compiling[0m crypto-common v0.1.7
+[1m[92m   Compiling[0m block-buffer v0.10.4
+[1m[92m   Compiling[0m miniz_oxide v0.8.9
+[1m[92m   Compiling[0m ndk-sys v0.6.0+11769913
+[1m[92m   Compiling[0m fdeflate v0.3.7
+[1m[92m   Compiling[0m rustc_version v0.4.1
+[1m[92m   Compiling[0m dpi v0.1.2
+[1m[92m   Compiling[0m servo_arc v0.5.0
+[1m[92m   Compiling[0m option-ext v0.2.0
+[1m[92m   Compiling[0m tower-service v0.3.3
+[1m[92m   Compiling[0m const-oid v0.10.3
+[1m[92m   Compiling[0m try-lock v0.2.5
+[1m[92m   Compiling[0m once_cell v1.21.4
+[1m[92m   Compiling[0m bit-vec v0.10.2
+[1m[92m   Compiling[0m tracing-core v0.1.36
+[1m[92m   Compiling[0m bit-set v0.11.1
+[1m[92m   Compiling[0m digest v0.11.3
+[1m[92m   Compiling[0m selectors v0.41.0
+[1m[92m   Compiling[0m want v0.3.2
+[1m[92m   Compiling[0m dirs-sys v0.5.0
+[1m[92m   Compiling[0m png v0.18.1
+[1m[92m   Compiling[0m embed-resource v3.0.12
+[1m[92m   Compiling[0m ndk v0.9.0
+[1m[92m   Compiling[0m digest v0.10.7
+[1m[92m   Compiling[0m crossbeam-channel v0.5.17
+[1m[92m   Compiling[0m html5ever v0.40.1
+[1m[92m   Compiling[0m sync_wrapper v1.0.2
+[1m[92m   Compiling[0m tao-macros v0.1.4
+[1m[92m   Compiling[0m cpufeatures v0.2.17
+[1m[92m   Compiling[0m atomic-waker v1.1.2
+[1m[92m   Compiling[0m wry v0.57.3
+[1m[92m   Compiling[0m tower-layer v0.3.3
+[1m[92m   Compiling[0m tauri-runtime v2.12.4
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m cpufeatures v0.3.1
+[1m[92m   Compiling[0m sha2 v0.11.1
+[1m[92m   Compiling[0m ico v0.6.0
+[1m[92m   Compiling[0m tower v0.5.3
+[1m[92m   Compiling[0m dom_query v0.29.0
+[1m[92m   Compiling[0m hyper v1.12.0
+[1m[92m   Compiling[0m sha2 v0.10.9
+[1m[92m   Compiling[0m tauri-winres v0.3.7
+[1m[92m   Compiling[0m dirs v7.0.0
+[1m[92m   Compiling[0m tracing v0.1.44
+[1m[92m   Compiling[0m tauri v2.12.7
+[1m[92m   Compiling[0m futures-channel v0.3.34
+[1m[92m   Compiling[0m cargo_toml v1.0.1
+[1m[92m   Compiling[0m futures-sink v0.3.34
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[92m   Compiling[0m tauri-runtime-wry v2.12.5
+[1m[92m   Compiling[0m ipnet v2.12.2
+[1m[92m   Compiling[0m static_vcruntime v3.0.0
+[1m[92m   Compiling[0m ndk-context v0.1.1
+[1m[92m   Compiling[0m tao v0.37.3
+[1m[92m   Compiling[0m hyper-util v0.1.21
+[1m[92m   Compiling[0m tauri-build v2.7.6
+[1m[92m   Compiling[0m tokio-util v0.7.20
+[1m[92m   Compiling[0m tower-http v0.6.11
+[1m[92m   Compiling[0m tauri-codegen v2.7.6
+[1m[92m   Compiling[0m http-body-util v0.1.5
+[1m[92m   Compiling[0m serialize-to-javascript-impl v0.1.2
+[1m[92m   Compiling[0m serialize-to-javascript v0.1.2
+[1m[92m   Compiling[0m reqwest v0.13.5
+[1m[92m   Compiling[0m tauri-macros v2.7.6
+[1m[92m   Compiling[0m trawl v0.7.18 (/home/runner/work/trawl/trawl/src-tauri)
+[1m[92m   Compiling[0m serde_repr v0.1.21
+[1m[92m   Compiling[0m mime v0.3.18
+[1m[33mwarning[0m[1m: unused import: `Ordering`[0m
+  [1m[94m--> [0msrc/lib.rs:21:48
+   [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+   [1m[94m|[0m                                                [1m[33m^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused imports: `DownloadEvent`, `LogicalPosition`, `LogicalSize`, `NewWindowResponse`, `PageLoadEvent`, `RunEvent`, `WebviewBuilder`, `WebviewWindowBuilder`, and `WindowBuilder`[0m
+  [1m[94m--> [0msrc/lib.rs:25:15
+   [1m[94m|[0m
+[1m[94m25[0m [1m[94m|[0m     webview::{DownloadEvent, NewWindowResponse, PageLoadEvent, WebviewBuilder},
+   [1m[94m|[0m               [1m[33m^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^^[0m
+[1m[94m26[0m [1m[94m|[0m     AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, RunEvent, State, WebviewUrl,
+   [1m[94m|[0m                         [1m[33m^^^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^[0m           [1m[33m^^^^^^^^[0m
+[1m[94m27[0m [1m[94m|[0m     WindowBuilder, WebviewWindowBuilder,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused variable: `password`[0m
+    [1m[94m--> [0msrc/lib.rs:2960:43
+     [1m[94m|[0m
+[1m[94m2960[0m [1m[94m|[0m fn pw_add(site: String, username: String, password: String, note: Option<String>) -> Result<(), String> {
+     [1m[94m|[0m                                           [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_password`[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused variable: `password`[0m
+    [1m[94m--> [0msrc/lib.rs:2980:44
+     [1m[94m|[0m
+[1m[94m2980[0m [1m[94m|[0m fn pw_update(id: String, username: String, password: String, note: Option<String>) -> Result<(), String> {
+     [1m[94m|[0m                                            [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_password`[0m
+
+[1m[33mwarning[0m[1m: variable does not need to be mutable[0m
+    [1m[94m--> [0msrc/lib.rs:5319:13
+     [1m[94m|[0m
+[1m[94m5319[0m [1m[94m|[0m         let mut act = state.mob_active.lock().unwrap();
+     [1m[94m|[0m             [1m[94m----[0m[1m[33m^^^[0m
+     [1m[94m|[0m             [1m[94m|[0m
+     [1m[94m|[0m             [1m[94mhelp: remove this `mut`[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: constant `DOWNLOAD_CAP` is never used[0m
+  [1m[94m--> [0msrc/lib.rs:38:7
+   [1m[94m|[0m
+[1m[94m38[0m [1m[94m|[0m const DOWNLOAD_CAP: usize = 60;
+   [1m[94m|[0m       [1m[33m^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: constant `CHROME_LABEL` is never used[0m
+  [1m[94m--> [0msrc/lib.rs:40:7
+   [1m[94m|[0m
+[1m[94m40[0m [1m[94m|[0m const CHROME_LABEL: &str = "ui";
+   [1m[94m|[0m       [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: static `CLOSE_BYPASS` is never used[0m
+  [1m[94m--> [0msrc/lib.rs:43:8
+   [1m[94m|[0m
+[1m[94m43[0m [1m[94m|[0m static CLOSE_BYPASS: AtomicBool = AtomicBool::new(false);
+   [1m[94m|[0m        [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: fields `label`, `kind`, `x`, `y`, `w`, and `height` are never read[0m
+  [1m[94m--> [0msrc/lib.rs:90:5
+   [1m[94m|[0m
+[1m[94m89[0m [1m[94m|[0m struct OverlayState {
+   [1m[94m|[0m        [1m[94m------------[0m [1m[94mfields in this struct[0m
+[1m[94m90[0m [1m[94m|[0m     label: String,
+   [1m[94m|[0m     [1m[33m^^^^^[0m
+[1m[94m91[0m [1m[94m|[0m     kind: String,
+   [1m[94m|[0m     [1m[33m^^^^[0m
+[1m[94m92[0m [1m[94m|[0m     x: f64,
+   [1m[94m|[0m     [1m[33m^[0m
+[1m[94m93[0m [1m[94m|[0m     y: f64,
+   [1m[94m|[0m     [1m[33m^[0m
+[1m[94m94[0m [1m[94m|[0m     w: f64,
+   [1m[94m|[0m     [1m[33m^[0m
+[1m[94m95[0m [1m[94m|[0m     height: f64,
+   [1m[94m|[0m     [1m[33m^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `default_newtab_url` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:205:4
+    [1m[94m|[0m
+[1m[94m205[0m [1m[94m|[0m fn default_newtab_url(settings: &Settings) -> String {
+    [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `builtin_ext` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:298:4
+    [1m[94m|[0m
+[1m[94m298[0m [1m[94m|[0m fn builtin_ext(id: &str) -> Option<ExtensionItem> {
+    [1m[94m|[0m    [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: fields `layout`, `split_ratio`, `overlay`, `ctx_items`, `reader_tabs`, and `ready_webviews` are never read[0m
+   [1m[94m--> [0msrc/lib.rs:435:5
+    [1m[94m|[0m
+[1m[94m430[0m [1m[94m|[0m struct AppState {
+    [1m[94m|[0m        [1m[94m--------[0m [1m[94mfields in this struct[0m
+[1m[94m...[0m
+[1m[94m435[0m [1m[94m|[0m     layout: Mutex<(f64, f64, f64, f64)>,
+    [1m[94m|[0m     [1m[33m^^^^^^[0m
+[1m[94m...[0m
+[1m[94m438[0m [1m[94m|[0m     split_ratio: Mutex<f64>,     // 分屏比例（0.2-0.8）
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+[1m[94m...[0m
+[1m[94m444[0m [1m[94m|[0m     overlay: Mutex<Option<OverlayState>>,
+    [1m[94m|[0m     [1m[33m^^^^^^^[0m
+[1m[94m445[0m [1m[94m|[0m     /// 通用右键菜单（ctxmenu.html）当前要显示的项
+[1m[94m446[0m [1m[94m|[0m     ctx_items: Mutex<Vec<CtxMenuItem>>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^[0m
+[1m[94m...[0m
+[1m[94m451[0m [1m[94m|[0m     reader_tabs: Mutex<HashMap<String, bool>>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+[1m[94m...[0m
+[1m[94m458[0m [1m[94m|[0m     ready_webviews: Mutex<std::collections::HashSet<String>>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: fields `id`, `matches`, and `js` are never read[0m
+   [1m[94m--> [0msrc/lib.rs:468:5
+    [1m[94m|[0m
+[1m[94m467[0m [1m[94m|[0m struct LocalExtScript {
+    [1m[94m|[0m        [1m[94m--------------[0m [1m[94mfields in this struct[0m
+[1m[94m468[0m [1m[94m|[0m     id: String,
+    [1m[94m|[0m     [1m[33m^^[0m
+[1m[94m469[0m [1m[94m|[0m     matches: Vec<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^[0m
+[1m[94m470[0m [1m[94m|[0m     js: String,
+    [1m[94m|[0m     [1m[33m^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `LocalExtScript` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+[1m[33mwarning[0m[1m: function `webview_data_dir` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:533:4
+    [1m[94m|[0m
+[1m[94m533[0m [1m[94m|[0m fn webview_data_dir() -> PathBuf {
+    [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `versioned_url` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:539:4
+    [1m[94m|[0m
+[1m[94m539[0m [1m[94m|[0m fn versioned_url(path: &str) -> String {
+    [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `webview_url` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:923:4
+    [1m[94m|[0m
+[1m[94m923[0m [1m[94m|[0m fn webview_url(url: &str) -> Result<WebviewUrl, String> {
+    [1m[94m|[0m    [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: static `WEBVIEW_LOCK` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:948:8
+    [1m[94m|[0m
+[1m[94m948[0m [1m[94m|[0m static WEBVIEW_LOCK: Mutex<()> = Mutex::new(());
+    [1m[94m|[0m        [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `lock_webviews` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:950:4
+    [1m[94m|[0m
+[1m[94m950[0m [1m[94m|[0m fn lock_webviews() -> std::sync::MutexGuard<'static, ()> {
+    [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: type alias `CreatorJob` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:964:6
+    [1m[94m|[0m
+[1m[94m964[0m [1m[94m|[0m type CreatorJob = Box<dyn FnOnce(&AppHandle) + Send>;
+    [1m[94m|[0m      [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: static `CREATOR` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:966:8
+    [1m[94m|[0m
+[1m[94m966[0m [1m[94m|[0m static CREATOR: std::sync::OnceLock<std::sync::mpsc::Sender<CreatorJob>> =
+    [1m[94m|[0m        [1m[33m^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `spawn_create` is never used[0m
+   [1m[94m--> [0msrc/lib.rs:983:4
+    [1m[94m|[0m
+[1m[94m983[0m [1m[94m|[0m fn spawn_create<F>(app: &AppHandle, f: F)
+    [1m[94m|[0m    [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `want_visible` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:1171:4
+     [1m[94m|[0m
+[1m[94m1171[0m [1m[94m|[0m fn want_visible(state: &AppState) -> Vec<String> {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `PAGE_BRIDGE` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:1458:7
+     [1m[94m|[0m
+[1m[94m1458[0m [1m[94m|[0m const PAGE_BRIDGE: &str = r#"
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `move_tab` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:1623:4
+     [1m[94m|[0m
+[1m[94m1623[0m [1m[94m|[0m fn move_tab(app: AppHandle, id: String, beforeId: Option<String>, pinned: bool) {
+     [1m[94m|[0m    [1m[33m^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `create_folder` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:1673:4
+     [1m[94m|[0m
+[1m[94m1673[0m [1m[94m|[0m fn create_folder(app: AppHandle, name: String, workspaceId: Option<String>) -> String {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `move_tab_to_folder` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:1714:4
+     [1m[94m|[0m
+[1m[94m1714[0m [1m[94m|[0m fn move_tab_to_folder(app: AppHandle, id: String, folderId: Option<String>) {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `READER_JS` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:2282:7
+     [1m[94m|[0m
+[1m[94m2282[0m [1m[94m|[0m const READER_JS: &str = r#"(() => {
+     [1m[94m|[0m       [1m[33m^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `IMMERSIVE_JS` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:2388:7
+     [1m[94m|[0m
+[1m[94m2388[0m [1m[94m|[0m const IMMERSIVE_JS: &str = r#"(() => {
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `pattern_matches` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:2581:4
+     [1m[94m|[0m
+[1m[94m2581[0m [1m[94m|[0m fn pattern_matches(pattern: &str, url: &str) -> bool {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `WARM_KINDS` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:3415:7
+     [1m[94m|[0m
+[1m[94m3415[0m [1m[94m|[0m const WARM_KINDS: [&str; 2] = ["quickbar", "menu"];
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `is_warm_kind` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:3417:4
+     [1m[94m|[0m
+[1m[94m3417[0m [1m[94m|[0m fn is_warm_kind(kind: &str) -> bool {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `warm_basis` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:3421:4
+     [1m[94m|[0m
+[1m[94m3421[0m [1m[94m|[0m fn warm_basis(kind: &str) -> &'static str {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `warm_label` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:3428:4
+     [1m[94m|[0m
+[1m[94m3428[0m [1m[94m|[0m fn warm_label(kind: &str) -> String {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `UPDATE_API_URL` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:3935:7
+     [1m[94m|[0m
+[1m[94m3935[0m [1m[94m|[0m const UPDATE_API_URL: &str =
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: struct `UpdateInfo` is never constructed[0m
+    [1m[94m--> [0msrc/lib.rs:3939:8
+     [1m[94m|[0m
+[1m[94m3939[0m [1m[94m|[0m struct UpdateInfo {
+     [1m[94m|[0m        [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `version_is_newer` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:3946:4
+     [1m[94m|[0m
+[1m[94m3946[0m [1m[94m|[0m fn version_is_newer(latest: &str, current: &str) -> bool {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `host_key` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4183:4
+     [1m[94m|[0m
+[1m[94m4183[0m [1m[94m|[0m fn host_key(url: &str) -> String {
+     [1m[94m|[0m    [1m[33m^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `capture_screen` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4451:4
+     [1m[94m|[0m
+[1m[94m4451[0m [1m[94m|[0m fn capture_screen(_app: AppHandle) -> Result<String, String> {
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `open_dir` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4473:4
+     [1m[94m|[0m
+[1m[94m4473[0m [1m[94m|[0m fn open_dir(dir: PathBuf) {
+     [1m[94m|[0m    [1m[33m^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: static `HOTKEY_TID` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4510:8
+     [1m[94m|[0m
+[1m[94m4510[0m [1m[94m|[0m static HOTKEY_TID: AtomicU32 = AtomicU32::new(0);
+     [1m[94m|[0m        [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `WM_HOTKEYS_ON` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4512:7
+     [1m[94m|[0m
+[1m[94m4512[0m [1m[94m|[0m const WM_HOTKEYS_ON: u32 = 0x8001; // WM_APP + 1
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `WM_HOTKEYS_OFF` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4513:7
+     [1m[94m|[0m
+[1m[94m4513[0m [1m[94m|[0m const WM_HOTKEYS_OFF: u32 = 0x8002; // WM_APP + 2
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `MOD_ALT_NR` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4516:7
+     [1m[94m|[0m
+[1m[94m4516[0m [1m[94m|[0m const MOD_ALT_NR: u32 = 0x0001 | 0x4000;
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `MOD_CTRL_NR` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4517:7
+     [1m[94m|[0m
+[1m[94m4517[0m [1m[94m|[0m const MOD_CTRL_NR: u32 = 0x0002 | 0x4000;
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `MOD_CTRL_SHIFT_NR` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4518:7
+     [1m[94m|[0m
+[1m[94m4518[0m [1m[94m|[0m const MOD_CTRL_SHIFT_NR: u32 = 0x0002 | 0x0004 | 0x4000;
+     [1m[94m|[0m       [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `HOTKEYS` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4520:7
+     [1m[94m|[0m
+[1m[94m4520[0m [1m[94m|[0m const HOTKEYS: [(i32, u32, u32); 17] = [
+     [1m[94m|[0m       [1m[33m^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `set_hotkeys_enabled` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4542:4
+     [1m[94m|[0m
+[1m[94m4542[0m [1m[94m|[0m fn set_hotkeys_enabled(_enabled: bool) {}
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `start_global_hotkeys` is never used[0m
+    [1m[94m--> [0msrc/lib.rs:4567:4
+     [1m[94m|[0m
+[1m[94m4567[0m [1m[94m|[0m fn start_global_hotkeys(_app: AppHandle) {}
+     [1m[94m|[0m    [1m[33m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m: `trawl` (lib) generated 48 warnings (run `cargo fix --lib -p trawl` to apply 5 suggestions)
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 1m 04s
+        Info symlinking lib "/home/runner/work/trawl/trawl/src-tauri/target/aarch64-linux-android/debug/libtrawl_lib.so" in jniLibs dir "/home/runner/work/trawl/trawl/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a"
+        Info "/home/runner/work/trawl/trawl/src-tauri/target/aarch64-linux-android/debug/libtrawl_lib.so" requires shared lib "libandroid.so"
+        Info "/home/runner/work/trawl/trawl/src-tauri/target/aarch64-linux-android/debug/libtrawl_lib.so" requires shared lib "libdl.so"
+        Info "/home/runner/work/trawl/trawl/src-tauri/target/aarch64-linux-android/debug/libtrawl_lib.so" requires shared lib "liblog.so"
+        Info "/home/runner/work/trawl/trawl/src-tauri/target/aarch64-linux-android/debug/libtrawl_lib.so" requires shared lib "libm.so"
+        Info "/home/runner/work/trawl/trawl/src-tauri/target/aarch64-linux-android/debug/libtrawl_lib.so" requires shared lib "libc.so"
+        Info symlink at "/home/runner/work/trawl/trawl/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/libtrawl_lib.so" points to "/home/runner/work/trawl/trawl/src-tauri/target/aarch64-linux-android/debug/libtrawl_lib.so"
+Fetching distribution.
+Downloading https://services.gradle.org/distributions/gradle-9.6.1-bin.zip
+.............10%.............20%..............30%.............40%..............50%.............60%.............70%..............80%.............90%..............100%
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+A problem occurred configuring project ':buildSrc'.
+> Could not resolve all artifacts for configuration 'classpath'.
+   > Could not resolve org.jetbrains.kotlin:kotlin-stdlib:2.3.21.
+     Required by:
+         buildscript of project ':buildSrc'
+         buildscript of project ':buildSrc' > org.gradle.kotlin.kotlin-dsl:org.gradle.kotlin.kotlin-dsl.gradle.plugin:6.6.4 > org.gradle.kotlin:gradle-kotlin-dsl-plugins:6.6.4
+      > Repository Gradle Central Plugin Repository is disabled due to earlier error below:
+         > Could not resolve org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.3.21.
+            > Could not get resource 'https://plugins.gradle.org/m2/org/jetbrains/kotlin/kotlin-gradle-plugin-api/2.3.21/kotlin-gradle-plugin-api-2.3.21.pom'.
+               > Could not GET 'https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin-api/2.3.21/kotlin-gradle-plugin-api-2.3.21.pom'. Received status code 429 from server: Too Many Requests
+   > Could not resolve org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21.
+     Required by:
+         buildscript of project ':buildSrc' > org.gradle.kotlin.kotlin-dsl:org.gradle.kotlin.kotlin-dsl.gradle.plugin:6.6.4 > org.gradle.kotlin:gradle-kotlin-dsl-plugins:6.6.4
+      > Could not resolve org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21.
+         > Could not parse POM https://plugins.gradle.org/m2/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/kotlin-gradle-plugin-2.3.21.pom
+            > Could not resolve org.jetbrains.kotlin:kotlin-gradle-plugins-bom:2.3.21.
+               > Could not resolve org.jetbrains.kotlin:kotlin-gradle-plugins-bom:2.3.21.
+                  > Could not get resource 'https://plugins.gradle.org/m2/org/jetbrains/kotlin/kotlin-gradle-plugins-bom/2.3.21/kotlin-gradle-plugins-bom-2.3.21.pom'.
+                     > Could not GET 'https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugins-bom/2.3.21/kotlin-gradle-plugins-bom-2.3.21.pom'. Received status code 429 from server: Too Many Requests
+> There are 3 more failures with identical causes.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 21s
+Configuration cache entry stored.
+failed to build APK: Failed to assemble APK with Io(BeforeSpawn(<closure>), Io(StderrFile(OwnedFd { fd: 24 }), Io(StdoutFile(OwnedFd { fd: 23 }), Io(StdinFile(OwnedFd { fd: 22 }), Io(Env("CARGO_TARGET_I686_LINUX_ANDROID_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("WRY_ANDROID_PACKAGE", "com.trawl.browser"), Io(Env("TAURI_ANDROID_PROJECT_PATH", "/home/runner/work/trawl/trawl/src-tauri/gen/android"), Io(Env("TAURI_ANDROID_KEY_PRIVATE_KEY_PASSWORD", ""), Io(Env("TAURI_ANDROID_PACKAGE_UNESCAPED", "com.trawl.browser"), Io(Env("ANDROID_HOME", "/usr/local/lib/android/sdk"), Io(Env("HOME", "/home/runner"), Io(Env("TAURI_ANDROID_KEY_ALIAS", ""), Io(Env("CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("RUST_LOG_STYLE", "always"), Io(Env("CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang"), Io(Env("CARGO_TERM_COLOR", "always"), Io(Env("CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang"), Io(Env("WRY_ANDROID_KOTLIN_FILES_OUT_DIR", "/home/runner/work/trawl/trawl/src-tauri/gen/android/app/src/main/java/com/trawl/browser/generated"), Io(Env("PATH", "/home/runner/work/trawl/trawl/node_modules/.bin:/home/runner/work/trawl/trawl/node_modules/.bin:/home/runner/work/trawl/node_modules/.bin:/home/runner/work/node_modules/.bin:/home/runner/node_modules/.bin:/home/node_modules/.bin:/node_modules/.bin:/opt/hostedtoolcache/node/20.20.2/x64/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.21-9/x64/bin:/opt/hostedtoolcache/node/20.20.2/x64/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"), Io(Env("WRY_ANDROID_LIBRARY", "trawl_lib"), Io(Env("CARGO_HOME", "/home/runner/.cargo"), Io(Env("TAURI_ANDROID_KEYSTORE_PASSWORD", ""), Io(Env("NDK_HOME", "/usr/local/lib/android/sdk/ndk/30.0.16248370"), Io(Env("CARGO_TARGET_I686_LINUX_ANDROID_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android24-clang"), Io(Env("CARGO_INCREMENTAL", "0"), Io(Env("CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang"), Io(Env("CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("TAURI_CLI_VERBOSITY", "0"), Io(Env("TAURI_ANDROID_KEYSTORE_PATH", ""), Cmd(["/home/runner/work/trawl/trawl/src-tauri/gen/android/gradlew", "--project-dir", "/home/runner/work/trawl/trawl/src-tauri/gen/android"]))))))))))))))))))))))))))))))): command ["/home/runner/work/trawl/trawl/src-tauri/gen/android/gradlew", "--project-dir", "/home/runner/work/trawl/trawl/src-tauri/gen/android"] exited with code 1
+       Error failed to build APK: Failed to assemble APK with Io(BeforeSpawn(<closure>), Io(StderrFile(OwnedFd { fd: 24 }), Io(StdoutFile(OwnedFd { fd: 23 }), Io(StdinFile(OwnedFd { fd: 22 }), Io(Env("CARGO_TARGET_I686_LINUX_ANDROID_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("WRY_ANDROID_PACKAGE", "com.trawl.browser"), Io(Env("TAURI_ANDROID_PROJECT_PATH", "/home/runner/work/trawl/trawl/src-tauri/gen/android"), Io(Env("TAURI_ANDROID_KEY_PRIVATE_KEY_PASSWORD", ""), Io(Env("TAURI_ANDROID_PACKAGE_UNESCAPED", "com.trawl.browser"), Io(Env("ANDROID_HOME", "/usr/local/lib/android/sdk"), Io(Env("HOME", "/home/runner"), Io(Env("TAURI_ANDROID_KEY_ALIAS", ""), Io(Env("CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("RUST_LOG_STYLE", "always"), Io(Env("CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang"), Io(Env("CARGO_TERM_COLOR", "always"), Io(Env("CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang"), Io(Env("WRY_ANDROID_KOTLIN_FILES_OUT_DIR", "/home/runner/work/trawl/trawl/src-tauri/gen/android/app/src/main/java/com/trawl/browser/generated"), Io(Env("PATH", "/home/runner/work/trawl/trawl/node_modules/.bin:/home/runner/work/trawl/trawl/node_modules/.bin:/home/runner/work/trawl/node_modules/.bin:/home/runner/work/node_modules/.bin:/home/runner/node_modules/.bin:/home/node_modules/.bin:/node_modules/.bin:/opt/hostedtoolcache/node/20.20.2/x64/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.21-9/x64/bin:/opt/hostedtoolcache/node/20.20.2/x64/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"), Io(Env("WRY_ANDROID_LIBRARY", "trawl_lib"), Io(Env("CARGO_HOME", "/home/runner/.cargo"), Io(Env("TAURI_ANDROID_KEYSTORE_PASSWORD", ""), Io(Env("NDK_HOME", "/usr/local/lib/android/sdk/ndk/30.0.16248370"), Io(Env("CARGO_TARGET_I686_LINUX_ANDROID_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android24-clang"), Io(Env("CARGO_INCREMENTAL", "0"), Io(Env("CARGO_TARGET_X86_64_LINUX_ANDROID_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER", "/usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang"), Io(Env("CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS", "-Clink-arg=-landroid -Clink-arg=-llog -Clink-arg=-lOpenSLES"), Io(Env("TAURI_CLI_VERBOSITY", "0"), Io(Env("TAURI_ANDROID_KEYSTORE_PATH", ""), Cmd(["/home/runner/work/trawl/trawl/src-tauri/gen/android/gradlew", "--project-dir", "/home/runner/work/trawl/trawl/src-tauri/gen/android"]))))))))))))))))))))))))))))))): command ["/home/runner/work/trawl/trawl/src-tauri/gen/android/gradlew", "--project-dir", "/home/runner/work/trawl/trawl/src-tauri/gen/android"] exited with code 1

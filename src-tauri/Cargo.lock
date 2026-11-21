@@ -4265,7 +4265,7 @@ dependencies = [
 
 [[package]]
 name = "trawl"
-version = "0.7.15"
+version = "0.7.16"
 dependencies = [
  "reqwest 0.12.28",
  "serde",

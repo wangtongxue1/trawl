@@ -85,7 +85,6 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         with:
-          projectName: Trawl
           tagName: v__VERSION__
           releaseName: 'Trawl 元搜浏览器 v__VERSION__'
           releaseBody: 'Trawl 元搜浏览器新版本。Windows 用 .msi/.exe；macOS Apple Silicon 用 aarch64.dmg，Intel 用 x64.dmg；Android 用 aarch64 APK。'

@@ -25,9 +25,21 @@ jobs:
           workspaces: './src-tauri -> target'
 
       - name: cargo check
+        id: check
         working-directory: src-tauri
         run: cargo check --all-targets
 
       - name: cargo test
+        if: success()
         working-directory: src-tauri
         run: cargo test --release
+
+      # 失败时把编译错误写到 Job Summary，方便远程排查
+      - name: Collect check errors
+        if: failure()
+        working-directory: src-tauri
+        run: |
+          echo "## ${{ matrix.os }} cargo check 错误" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cargo check --all-targets 2>&1 | grep -E "^error|error\[E|^  -->|cannot find|unresolved" | head -40 >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -65,6 +65,12 @@ struct DownloadInfo {
     /// started | done | failed
     state: String,
     path: String,
+    /// 已下载字节数（后端接管下载后实时更新）
+    #[serde(default)]
+    received: u64,
+    /// 总字节数（0 = 服务器未给出）
+    #[serde(default)]
+    total: u64,
     ts: u64,
 }
 
@@ -729,6 +735,115 @@ fn push_state(_app: &AppHandle) {
     }
 }
 
+// ==================== 后端接管下载 ====================
+
+/// 目标路径若已存在则生成 "名字 (1).ext" 风格的新路径
+#[cfg(desktop)]
+fn unique_download_path(dest: &std::path::Path) -> std::path::PathBuf {
+    use std::path::Path;
+    if !dest.exists() {
+        return dest.to_path_buf();
+    }
+    let dir = dest.parent().unwrap_or(Path::new(".")).to_path_buf();
+    let stem = dest
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "download".into());
+    let ext = dest
+        .extension()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    for n in 1..1000u32 {
+        let name = if ext.is_empty() {
+            format!("{stem} ({n})")
+        } else {
+            format!("{stem} ({n}).{ext}")
+        };
+        let p = dir.join(name);
+        if !p.exists() {
+            return p;
+        }
+    }
+    dir.join(format!("{stem}-{}.bin", now_ts()))
+}
+
+/// 后端线程下载：实时更新 DownloadInfo 并推送进度
+#[cfg(desktop)]
+fn spawn_download(app: AppHandle, url: String, dest: std::path::PathBuf) {
+    std::thread::spawn(move || {
+        let dest = unique_download_path(&dest);
+        let mark = |app: &AppHandle, state: &str, received: u64, total: u64, path: &std::path::Path| {
+            let st = app.state::<AppState>();
+            let mut list = st.downloads.lock().unwrap();
+            if let Some(d) = list.iter_mut().rev().find(|d| d.url == url) {
+                d.state = state.into();
+                d.received = received;
+                d.total = total;
+                d.path = path.display().to_string();
+                d.ts = now_ts();
+            }
+        };
+        let fail = |app: &AppHandle, path: &std::path::Path| {
+            let _ = std::fs::remove_file(path);
+            mark(app, "failed", 0, 0, path);
+            push_state(app);
+        };
+        mark(&app, "started", 0, 0, &dest);
+        push_state(&app);
+
+        let client = match reqwest::blocking::Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
+            .connect_timeout(std::time::Duration::from_secs(15))
+            .redirect(reqwest::redirect::Policy::limited(10))
+            .build()
+        {
+            Ok(c) => c,
+            Err(_) => return fail(&app, &dest),
+        };
+        let mut resp = match client.get(&url).send() {
+            Ok(r) if r.status().is_success() => r,
+            _ => return fail(&app, &dest),
+        };
+        let total = resp.content_length().unwrap_or(0);
+        mark(&app, "started", 0, total, &dest);
+        push_state(&app);
+
+        let mut file = match std::fs::File::create(&dest) {
+            Ok(f) => f,
+            Err(_) => return fail(&app, &dest),
+        };
+        use std::io::{Read, Write};
+        let mut received: u64 = 0;
+        let mut last_emit = std::time::Instant::now();
+        let mut buf = vec![0u8; 64 * 1024];
+        loop {
+            match resp.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    if file.write_all(&buf[..n]).is_err() {
+                        return fail(&app, &dest);
+                    }
+                    received += n as u64;
+                    if last_emit.elapsed().as_millis() >= 400 {
+                        mark(&app, "started", received, total, &dest);
+                        push_state(&app);
+                        last_emit = std::time::Instant::now();
+                    }
+                }
+                Err(_) => return fail(&app, &dest),
+            }
+        }
+        let _ = file.flush();
+        // total == 0 表示服务器未给出长度（如 chunked），正常读到 EOF 即成功
+        if total == 0 || received >= total {
+            mark(&app, "done", received, total, &dest);
+        } else {
+            return fail(&app, &dest);
+        }
+        push_state(&app);
+    });
+}
+
 // ==================== 历史 / 书签 ====================
 
 fn record_history(state: &AppState, url: &str, title: &str) {
@@ -1109,6 +1224,9 @@ fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String>
     });
 
     // ---- 下载 ----
+    // 由后端全量接管：WebView2 的 DownloadOperation 在部分场景下会静默失败
+    // （Requested 触发后文件始终不落盘，StateChanged 也不触发），因此这里返回
+    // false 取消 WebView2 下载，改由 spawn_download 用 HTTP 下载并推送进度。
     let app_dl = app.clone();
     let builder = builder.on_download(move |_wv, event| {
         match event {
@@ -1120,6 +1238,8 @@ fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String>
                     url: url.to_string(),
                     state: "started".into(),
                     path: destination.display().to_string(),
+                    received: 0,
+                    total: 0,
                     ts: now_ts(),
                 });
                 if list.len() > DOWNLOAD_CAP {
@@ -1127,24 +1247,9 @@ fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String>
                     list.drain(0..excess);
                 }
                 drop(list);
+                spawn_download(app_dl.clone(), url.to_string(), destination.clone());
                 push_state(&app_dl);
-                true
-            }
-            DownloadEvent::Finished { url, path, success } => {
-                let st = app_dl.state::<AppState>();
-                {
-                    let mut list = st.downloads.lock().unwrap();
-                    let u = url.to_string();
-                    if let Some(d) = list.iter_mut().rev().find(|d| d.url == u) {
-                        d.state = if success { "done" } else { "failed" }.into();
-                        if let Some(p) = path {
-                            d.path = p.display().to_string();
-                        }
-                        d.ts = now_ts();
-                    }
-                }
-                push_state(&app_dl);
-                true
+                false
             }
             _ => true,
         }
@@ -5423,6 +5528,27 @@ mod tests {
         assert!(!version_is_newer("v0.7.13", "0.7.13"));
         assert!(!version_is_newer("0.7.12", "0.7.13"));
         assert!(!version_is_newer("0.7.13-beta", "0.7.13"));
+    }
+
+    #[cfg(desktop)]
+    #[test]
+    fn download_path_dedup() {
+        let dir = std::env::temp_dir().join(format!("trawl-dl-test-{}", now_ts()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let base = dir.join("setup.exe");
+        // 不存在 → 原样返回
+        assert_eq!(unique_download_path(&base), base);
+        // 存在 → (1)，再存在 → (2)
+        std::fs::write(&base, b"x").unwrap();
+        let one = unique_download_path(&base);
+        assert_eq!(one, dir.join("setup (1).exe"));
+        std::fs::write(&one, b"x").unwrap();
+        assert_eq!(unique_download_path(&base), dir.join("setup (2).exe"));
+        // 无扩展名文件
+        let noext = dir.join("file");
+        std::fs::write(&noext, b"x").unwrap();
+        assert_eq!(unique_download_path(&noext), dir.join("file (1)"));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

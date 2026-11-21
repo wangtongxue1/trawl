@@ -68,6 +68,31 @@ button, input { font-family: inherit; }
 .row .del:hover { color: #dc2626; }
 .row .reveal:hover { color: var(--accent-deep); }
 
+/* 下载面板 */
+.dl-main { min-width: 0; flex: 1; }
+.dl-line1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dl-line1 .title {
+  min-width: 0; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; flex-shrink: 1; font-size: 13px;
+}
+.dl-line1 .meta {
+  flex-shrink: 0; color: var(--text-dim); font-size: 11px;
+  white-space: nowrap;
+}
+.dl-line1 .meta.fail { color: #dc2626; }
+.dl-line1 .meta.ok { color: var(--accent-deep); }
+.dl-bar {
+  height: 3px; margin-top: 5px; border-radius: 2px;
+  background: var(--border); overflow: hidden;
+}
+.dl-bar i {
+  display: block; height: 100%; width: 0;
+  background: var(--accent); border-radius: 2px;
+  transition: width .3s ease;
+}
+.dl-bar.indet i { width: 30%; animation: dlslide 1.2s ease-in-out infinite; }
+@keyframes dlslide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+
 /* 页内查找条 */
 #findbar {
   width: 100%; height: 100%;
@@ -298,8 +323,18 @@ function toggleImport() {
   else renderImportBlock(document.getElementById('panel-body'));
 }
 
+let dlTimer = null;
+
+function fmtBytes(n) {
+  if (n >= 1073741824) return (n / 1073741824).toFixed(1) + ' GB';
+  if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+  if (n >= 1024) return (n / 1024).toFixed(0) + ' KB';
+  return n + ' B';
+}
+
 async function openDownloads() {
   showPanel('下载');
+  if (dlTimer) { clearInterval(dlTimer); dlTimer = null; }
   $('#panel-extra').classList.remove('hidden');
   $('#panel-extra').textContent = '清除已完成';
   $('#panel-extra').onclick = async () => { await invoke('clear_downloads'); openDownloads(); };
@@ -313,12 +348,62 @@ async function openDownloads() {
     : '';
   if (!list.length) { body.innerHTML = '<div class="empty">还没有下载记录</div>'; return; }
   for (const d of list) {
-    const stateText = d.state === 'started' ? '下载中' : d.state === 'done' ? '已完成' : '失败';
-    const extra = document.createElement('button');
-    extra.className = 'reveal';
-    extra.textContent = d.state === 'done' ? '打开' : stateText;
-    extra.onclick = (e) => { e.stopPropagation(); invoke('reveal_download', { path: d.path }); };
-    body.appendChild(row(d.path || d.url, stateText, () => invoke('reveal_download', { path: d.path }), extra));
+    const name = (d.path || d.url || '').split(/[\\/]/).pop() || d.url;
+    const el = document.createElement('div');
+    el.className = 'row';
+    const main = document.createElement('div');
+    main.className = 'dl-main';
+    const line1 = document.createElement('div');
+    line1.className = 'dl-line1';
+    const t = document.createElement('span');
+    t.className = 'title';
+    t.textContent = name;
+    t.title = d.path || d.url;
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    const bar = document.createElement('div');
+    bar.className = 'dl-bar';
+    const fill = document.createElement('i');
+    bar.appendChild(fill);
+    if (d.state === 'started') {
+      if (d.total > 0) {
+        const pct = Math.min(100, Math.round(d.received * 100 / d.total));
+        meta.textContent = pct + '% · ' + fmtBytes(d.received) + '/' + fmtBytes(d.total);
+        fill.style.width = pct + '%';
+      } else {
+        meta.textContent = '下载中 · ' + fmtBytes(d.received);
+        bar.classList.add('indet');
+      }
+    } else if (d.state === 'done') {
+      meta.className = 'meta ok';
+      meta.textContent = d.received > 0 ? '已完成 · ' + fmtBytes(d.received) : '已完成';
+    } else {
+      meta.className = 'meta fail';
+      meta.textContent = '失败';
+      fill.style.width = '100%';
+      fill.style.background = '#dc2626';
+    }
+    line1.appendChild(t);
+    line1.appendChild(meta);
+    main.appendChild(line1);
+    main.appendChild(bar);
+    el.appendChild(main);
+    if (d.state === 'done') {
+      const extra = document.createElement('button');
+      extra.className = 'reveal';
+      extra.textContent = '打开';
+      extra.onclick = (e) => { e.stopPropagation(); invoke('reveal_download', { path: d.path }); };
+      el.appendChild(extra);
+    }
+    el.onclick = () => invoke('reveal_download', { path: d.path });
+    body.appendChild(el);
+  }
+  // 有进行中的下载时每秒自动刷新（面板切走后停止）
+  if (running) {
+    dlTimer = setInterval(() => {
+      if ($('#panel-title').textContent !== '下载') { clearInterval(dlTimer); dlTimer = null; return; }
+      openDownloads();
+    }, 1000);
   }
 }
 

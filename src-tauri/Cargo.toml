@@ -1,6 +1,6 @@
 [package]
 name = "trawl"
-version = "0.7.18"
+version = "0.7.19"
 edition = "2021"
 description = "Trawl 元搜浏览器 — 把浏览器做薄，把搜索做快。Less browser. More search."
 

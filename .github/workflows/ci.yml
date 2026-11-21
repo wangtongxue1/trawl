@@ -6,6 +6,9 @@ on:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   check:
     strategy:
@@ -34,14 +37,18 @@ jobs:
         working-directory: src-tauri
         run: cargo test --release
 
-      # 失败时把编译错误以注解形式输出（显示在 run 页面，便于远程排查）
-      - name: Collect check errors
+      # 失败时把编译错误日志提交到 ci-logs 分支（便于远程查看）
+      - name: Collect check errors and commit log
         if: failure()
-        working-directory: src-tauri
         shell: bash
         run: |
-          cargo check --all-targets 2>&1 | grep -E '^error(\[E[0-9]+\])?:|^  -->' | head -30 | while IFS= read -r line; do
-            safe=$(printf '%s' "$line" | tr '\r' ' ' | cut -c1-380)
-            echo "::error::$safe"
-          done
-          cargo check --all-targets 2>&1 | tail -5 || true
+          set -e
+          OSNAME=$(echo "${{ matrix.os }}" | cut -d- -f1)
+          cd src-tauri
+          cargo check --all-targets > ../ci-error-"$OSNAME".log 2>&1 || true
+          cd ..
+          git config user.email "ci-bot@trawl.local"
+          git config user.name "ci-bot"
+          git add ci-error-"$OSNAME".log
+          git commit -m "ci: ${{ matrix.os }} cargo check error log"
+          git push origin "HEAD:ci-logs" -f

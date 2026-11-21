@@ -192,7 +192,15 @@ struct Settings {
     /// 工具栏「下载」按钮是否显示（true 时常驻，下载中有徽标）
     #[serde(default = "default_true")]
     show_dl_btn: bool,
+    /// 点击关闭按钮的行为：tray（最小化到任务栏托盘，默认）| exit（完全关闭）
+    #[serde(default = "default_close_action")]
+    close_action: String,
+    /// 已选择「以后再说」的更新版本号，避免每次启动都提醒
+    #[serde(default)]
+    update_skipped: String,
 }
+
+fn default_close_action() -> String { "tray".into() }
 
 fn default_newtab_url(settings: &Settings) -> String {
     // 「新建标签页打开内容」设置统一决定兜底页：internal=内置新标签页，
@@ -247,6 +255,8 @@ impl Default for Settings {
             show_ext_btn: true,
             show_history_btn: true,
             show_dl_btn: true,
+            close_action: default_close_action(),
+            update_skipped: String::new(),
         }
     }
 }
@@ -442,6 +452,10 @@ struct AppState {
     /// 本地扩展 content_scripts 缓存（save_extensions / 启动时重建），
     /// 页面加载完成时按 match 模式注入，让本地扩展真实生效
     ext_scripts: Mutex<Vec<LocalExtScript>>,
+    /// 已完成首次加载（至少触发过一次页面加载完成事件）的 webview。
+    /// 新建的标签 webview 要等这个标记才显示——否则会先闪一帧
+    /// WebView2 默认底色（黑屏闪烁的来源），再被页面内容覆盖。
+    ready_webviews: Mutex<std::collections::HashSet<String>>,
 }
 
 /// 一个本地扩展解析出的可注入脚本
@@ -474,6 +488,7 @@ impl Default for AppState {
             settings: Mutex::new(Settings::default()),
             reader_tabs: Mutex::new(HashMap::new()),
             ext_scripts: Mutex::new(Vec::new()),
+            ready_webviews: Mutex::new(std::collections::HashSet::new()),
         }
     }
 }
@@ -891,9 +906,18 @@ fn debug_log(msg: &str) {
 
 /// 把 "trawl://xxx" 映射到内置资源；其余按外链处理
 fn webview_url(url: &str) -> Result<WebviewUrl, String> {
+    // 支持 trawl://settings#privacy-clear 之类的深链：hash 转成 ?h= 查询参数
+    // 传给 settings.html（内部页通过 versioned_url 做缓存键控，不能直接挂 hash）
+    if let Some(rest) = url.strip_prefix("trawl://settings") {
+        let target = if rest.len() > 1 {
+            versioned_url(&format!("settings.html?h={}", &rest[1..]))
+        } else {
+            versioned_url("settings.html")
+        };
+        return target.parse().map(WebviewUrl::External).map_err(|e| format!("{:?}", e));
+    }
     match url {
         "trawl://newtab" => versioned_url("newtab.html").parse().map(WebviewUrl::External).map_err(|e| format!("{:?}", e)),
-        "trawl://settings" => versioned_url("settings.html").parse().map(WebviewUrl::External).map_err(|e| format!("{:?}", e)),
         "trawl://extensions" => versioned_url("extensions.html").parse().map(WebviewUrl::External).map_err(|e| format!("{:?}", e)),
         "trawl://passwords" => versioned_url("passwords.html").parse().map(WebviewUrl::External).map_err(|e| format!("{:?}", e)),
         _ => url
@@ -975,8 +999,19 @@ fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String>
     let label = id.to_string();
 
     // ---- 标题变化 ----
+    // 底色跟主题走：加载间隙露出的是这层底色而不是 WebView2 默认黑/白
+    let bg = {
+        let st = app.state::<AppState>();
+        let dark = st.settings.lock().unwrap().theme == "dark";
+        if dark {
+            tauri::window::Color(0x15, 0x18, 0x1c, 0xff)
+        } else {
+            tauri::window::Color(0xff, 0xff, 0xff, 0xff)
+        }
+    };
     let builder = WebviewBuilder::new(&label, target)
         .data_directory(webview_data_dir())
+        .background_color(bg)
         // 页面被点一下要通知 chrome（见 PAGE_BRIDGE 注释）
         .initialization_script(PAGE_BRIDGE);
     let builder = builder.on_document_title_changed(move |wv, title| {
@@ -1025,6 +1060,18 @@ fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String>
         // 本地扩展 content_scripts：页面加载完成后按 match 模式注入
         if !started {
             inject_local_extensions(&app_pl, &lid, &real_url);
+            // 首次加载完成才允许显示（黑屏闪烁修复）：把 webview 标记为就绪
+            // 并立即按当前布局定位显示。is_internal_page 等内置页同样走这里。
+            {
+                let st = app_pl.state::<AppState>();
+                let newly = st.ready_webviews.lock().unwrap().insert(lid.clone());
+                if newly {
+                    let active = st.active_tab.lock().unwrap().as_deref() == Some(lid.as_str());
+                    if active {
+                        show_active_tab(&app_pl, &st);
+                    }
+                }
+            }
         }
         push_state(&app_pl);
     });
@@ -1188,9 +1235,14 @@ fn show_active_tab(app: &AppHandle, state: &AppState) {
         let is_active = active.as_deref() == Some(id.as_str()) && ws == active_ws;
         let is_partner = active_in_split && split_ids.iter().any(|x| x == &id) && ws == active_ws;
         if is_active || is_partner {
-            // 先定位再显示，避免从旧位置闪到新位置
-            let _ = wv.set_bounds(bounds_for_tab(state, &id, &active));
-            let _ = wv.show();
+            // 只显示已完成首次加载的 webview：新创建的 webview 在页面画出第一帧
+            // 之前先保持隐藏（ready_webviews），避免黑屏/白屏闪烁。
+            let ready = state.ready_webviews.lock().unwrap().contains(&id);
+            if ready {
+                // 先定位再显示，避免从旧位置闪到新位置
+                let _ = wv.set_bounds(bounds_for_tab(state, &id, &active));
+                let _ = wv.show();
+            }
         } else {
             let _ = wv.hide();
         }
@@ -1217,7 +1269,7 @@ fn create_tab(
     activate: bool,
 ) -> Result<String, String> {
     let id = gen_id("tab");
-    let title = if url == "trawl://settings" {
+    let title = if url.starts_with("trawl://settings") {
         "设置".to_string()
     } else if url == "trawl://extensions" {
         "扩展程序".to_string()
@@ -3767,6 +3819,159 @@ fn win_close(app: AppHandle) {
     });
 }
 
+/// 显示并激活主窗口（托盘单击 / 托盘菜单「打开」共用）
+fn show_main_window(app: &AppHandle) {
+    if let Some(w) = app.get_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+// ==================== 更新检测 ====================
+
+/// 更新源：GitHub Releases 最新版。仓库转公开后此地址即生效；
+/// 拿不到（私库 / 断网 / 被墙）时静默跳过，不影响使用。
+const UPDATE_API_URL: &str =
+    "https://api.github.com/repos/wangtongxue1/trawl/releases/latest";
+
+#[derive(serde::Serialize)]
+struct UpdateInfo {
+    has_update: bool,
+    latest: String,
+    url: String,
+    notes: String,
+}
+
+fn version_is_newer(latest: &str, current: &str) -> bool {
+    let parse = |s: &str| -> Vec<u64> {
+        s.trim_start_matches('v')
+            .split('.')
+            .map(|p| p.split(['-', '+']).next().unwrap_or("0").parse::<u64>().unwrap_or(0))
+            .collect()
+    };
+    let (a, b) = (parse(latest), parse(current));
+    for i in 0..a.len().max(b.len()) {
+        let (x, y) = (a.get(i).copied().unwrap_or(0), b.get(i).copied().unwrap_or(0));
+        if x != y {
+            return x > y;
+        }
+    }
+    false
+}
+
+/// 检查更新：拉取 GitHub 最新 Release 并与当前版本比较。
+/// 手动（设置页按钮）与启动时共用；失败返回 has_update=false 的兜底信息。
+#[tauri::command]
+fn check_update() -> UpdateInfo {
+    check_update_impl()
+}
+
+fn check_update_impl() -> UpdateInfo {
+    let fallback = UpdateInfo {
+        has_update: false,
+        latest: String::new(),
+        url: String::new(),
+        notes: "暂时无法获取更新信息（可能是网络原因，或更新源尚未公开）".into(),
+    };
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .user_agent("trawl-browser")
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return fallback,
+    };
+    let resp = match client
+        .get(UPDATE_API_URL)
+        .header("Accept", "application/vnd.github+json")
+        .send()
+    {
+        Ok(r) => r,
+        Err(_) => return fallback,
+    };
+    if !resp.status().is_success() {
+        return fallback;
+    }
+    #[derive(serde::Deserialize)]
+    struct Rel {
+        tag_name: String,
+        html_url: String,
+    }
+    let rel: Rel = match resp.json() {
+        Ok(r) => r,
+        Err(_) => return fallback,
+    };
+    let current = env!("CARGO_PKG_VERSION");
+    let has = version_is_newer(&rel.tag_name, current);
+    UpdateInfo {
+        has_update: has,
+        latest: rel.tag_name.trim_start_matches('v').to_string(),
+        url: rel.html_url,
+        notes: if has {
+            format!("发现新版本 v{}（当前 v{}）", rel.tag_name.trim_start_matches('v'), current)
+        } else {
+            format!("当前已是最新版本 v{}", current)
+        },
+    }
+}
+
+/// 「以后再说」：记住被跳过的版本，本次不再弹启动提醒
+#[tauri::command]
+fn skip_update(app: AppHandle, version: String) {
+    let state = app.state::<AppState>();
+    {
+        let mut s = state.settings.lock().unwrap();
+        s.update_skipped = version;
+    }
+    let snap = state.settings.lock().unwrap().clone();
+    if let Ok(json) = serde_json::to_string(&snap) {
+        write_atomic(&data_root().join(SETTINGS_FILE), &json);
+    }
+    push_state(&app);
+}
+
+/// 用系统默认浏览器打开更新页（立即更新 → 跳转下载页）
+#[tauri::command]
+fn open_external(app: AppHandle, url: String) {
+    // 只允许 http/https，避免被当成命令注入
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return;
+    }
+    let _ = &app;
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("cmd")
+            .args(["/c", "start", "", &url])
+            .spawn();
+    }
+    #[cfg(not(windows))]
+    {
+        let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        let _ = std::process::Command::new(opener).arg(&url).spawn();
+    }
+}
+
+/// 启动 3 秒后后台检查更新；有新版本且用户没跳过该版本时通知 chrome 弹提示
+fn startup_update_check(app: AppHandle) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        let info = check_update_impl();
+        if !info.has_update {
+            return;
+        }
+        let skipped = {
+            let st = app.state::<AppState>();
+            let s = st.settings.lock().unwrap();
+            s.update_skipped.clone()
+        };
+        if skipped == info.latest {
+            return;
+        }
+        let _ = app.emit_to(CHROME_LABEL, "update-available", &info);
+    });
+}
+
 // ==================== 标签整理 / 排序 / 竖直标签栏 ====================
 
 /// 智能标签整理：按域名把当前工作区未固定、未归档的标签分进文件夹
@@ -4427,6 +4632,9 @@ pub fn run() {
             win_minimize,
             win_toggle_maximize,
             win_close,
+            check_update,
+            skip_update,
+            open_external,
             smart_organize,
             sort_tabs,
             toggle_vertical_tabs,
@@ -4434,6 +4642,44 @@ pub fn run() {
         ])
         .setup(|app| {
             start_creator(app.handle().clone());
+            // 任务栏托盘：关闭窗口默认缩到这里（设置里可改成完全关闭）
+            {
+                use tauri::menu::{Menu, MenuItem};
+                use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+                let open = MenuItem::with_id(app, "tray-open", "打开 Trawl", true, None::<&str>)
+                    .map_err(|e| format!("创建托盘菜单项失败: {e}"))?;
+                let quit = MenuItem::with_id(app, "tray-quit", "退出 Trawl", true, None::<&str>)
+                    .map_err(|e| format!("创建托盘菜单项失败: {e}"))?;
+                let menu = Menu::with_items(app, &[&open, &quit])
+                    .map_err(|e| format!("创建托盘菜单失败: {e}"))?;
+                TrayIconBuilder::with_id("trawl-tray")
+                    .icon(
+                        app.default_window_icon()
+                            .cloned()
+                            .expect("应用图标缺失（打包配置未包含 icon）"),
+                    )
+                    .tooltip("Trawl 元搜浏览器")
+                    .menu(&menu)
+                    .show_menu_on_left_click(false)
+                    .on_menu_event(|app, event| match event.id().as_ref() {
+                        "tray-open" => show_main_window(app),
+                        "tray-quit" => app.exit(0),
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        // 左键单击托盘图标：恢复主窗口
+                        if let TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            show_main_window(tray.app_handle());
+                        }
+                    })
+                    .build(app)
+                    .map_err(|e| format!("创建托盘失败: {e}"))?;
+            }
             let window = WindowBuilder::new(app, "main")
                 .title("Trawl")
                 .inner_size(1240.0, 820.0)
@@ -4444,6 +4690,20 @@ pub fn run() {
                 .shadow(true)
                 .build()
                 .map_err(|e| format!("创建主窗口失败: {e}"))?;
+            // 启动居中 + 分辨率适配：默认尺寸不超过主屏的 88%（逻辑像素），
+            // 小屏幕按比例缩小，避免窗口超出屏幕或偏在角落。
+            {
+                let _ = window.center();
+                if let Ok(Some(mon)) = window.primary_monitor() {
+                    let scale = mon.scale_factor();
+                    let mw = mon.size().width as f64 / scale;
+                    let mh = mon.size().height as f64 / scale;
+                    let w = (mw * 0.88).min(1240.0).max(760.0);
+                    let h = (mh * 0.88).min(820.0).max(540.0);
+                    let _ = window.set_size(tauri::LogicalSize::new(w, h));
+                    let _ = window.center();
+                }
+            }
             let size = window.inner_size().unwrap_or_default();
             // 初始化内容区布局（逻辑像素），避免第一帧标签页用 800x600 的默认值
             {
@@ -4459,7 +4719,9 @@ pub fn run() {
                         CHROME_LABEL,
                         WebviewUrl::External(versioned_url("index.html").parse().expect("chrome url")),
                     )
-                        .data_directory(webview_data_dir()),
+                        .data_directory(webview_data_dir())
+                        // 启动瞬间 chrome 底色：避免窗口先闪一帧黑/白
+                        .background_color(tauri::window::Color(0xf5, 0xf7, 0xf9, 0xff)),
                     tauri::PhysicalPosition::new(0, 0),
                     size,
                 )
@@ -4544,14 +4806,33 @@ pub fn run() {
                         .lock()
                         .unwrap()
                         .len();
-                    if enabled && !CLOSE_BYPASS.swap(false, Ordering::SeqCst) && count >= threshold {
+                    let bypass = CLOSE_BYPASS.swap(false, Ordering::SeqCst);
+                    let app2 = window.app_handle().clone();
+                    if enabled && !bypass && count >= threshold {
                         api.prevent_close();
                         // 主线程 emit_to 会静默丢事件（确认框永远不出现 → 窗口“关不掉”），
                         // 必须丢到工作线程发送
-                        let app2 = window.app_handle().clone();
                         std::thread::spawn(move || {
                             let _ = app2.emit_to(CHROME_LABEL, "close-guard", count);
                         });
+                        return;
+                    }
+                    // 关闭行为设置：tray = 缩到任务栏托盘（默认）；exit = 完全关闭。
+                    // bypass（force_close_app / 托盘「退出」）直通，不受影响。
+                    let action = app2
+                        .state::<AppState>()
+                        .settings
+                        .lock()
+                        .unwrap()
+                        .close_action
+                        .clone();
+                    if !bypass && action != "exit" {
+                        api.prevent_close();
+                        let _ = window.hide();
+                        // 托盘还没建（理论上 setup 就建了）就兜底提示，避免窗口"消失"
+                        if app2.tray_by_id("trawl-tray").is_none() {
+                            let _ = window.show();
+                        }
                     }
                 }
                 _ => {}
@@ -4571,6 +4852,8 @@ pub fn run() {
             ));
             start_global_hotkeys(app_handle.clone());
             restore_state(app_handle);
+            // 启动更新检测（3 秒后后台执行，不打扰启动流程）
+            startup_update_check(app_handle.clone());
             // 重建本地扩展 content_scripts 缓存（登记目录里的文件可能已变化）
             reload_ext_scripts(app_handle);
             let state = app_handle.state::<AppState>();
@@ -4641,6 +4924,16 @@ mod tests {
     }
     fn settings_with(engines: Vec<SearchEngine>, def: &str) -> Settings {
         Settings { engines, default_engine: def.into(), ..Settings::default() }
+    }
+
+    #[test]
+    fn update_version_compare() {
+        assert!(version_is_newer("v0.7.14", "0.7.13"));
+        assert!(version_is_newer("0.8", "0.7.99"));
+        assert!(version_is_newer("1.0.0", "0.9.9"));
+        assert!(!version_is_newer("v0.7.13", "0.7.13"));
+        assert!(!version_is_newer("0.7.12", "0.7.13"));
+        assert!(!version_is_newer("0.7.13-beta", "0.7.13"));
     }
 
     #[test]

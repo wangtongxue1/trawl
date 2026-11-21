@@ -858,6 +858,29 @@ listen('close-guard', (ev) => {
 $('#cg-cancel').onclick = () => cgMask.classList.add('hidden');
 $('#cg-ok').onclick = () => { cgMask.classList.add('hidden'); invoke('force_close_app').catch(() => {}); };
 
+/* ---- 更新提示：启动检测到新版本时右上角滑入（Edge 式） ---- */
+const ubBanner = $('#update-banner');
+let ubVersion = '', ubUrl = '';
+listen('update-available', (ev) => {
+  const p = ev.payload || {};
+  if (!p.has_update) return;
+  ubVersion = p.latest || '';
+  ubUrl = p.url || '';
+  $('#ub-title').textContent = `Trawl 新版本 v${ubVersion} 可用`;
+  $('#ub-desc').textContent = '新版已在云端就绪，可前往下载页获取安装包。';
+  ubBanner.classList.remove('hidden');
+  clearTimeout(ubBanner._t);
+  ubBanner._t = setTimeout(() => ubBanner.classList.add('hidden'), 30000);
+});
+$('#ub-now').onclick = () => {
+  if (ubUrl) invoke('open_external', { url: ubUrl }).catch(() => {});
+  ubBanner.classList.add('hidden');
+};
+$('#ub-later').onclick = () => {
+  if (ubVersion) invoke('skip_update', { version: ubVersion }).catch(() => {});
+  ubBanner.classList.add('hidden');
+};
+
 listen('refocus', () => {
   if (!editing) return;
   address.focus();

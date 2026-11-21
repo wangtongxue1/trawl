@@ -4,6 +4,12 @@ version = "0.7.13"
 edition = "2021"
 description = "Trawl 元搜浏览器 — 把浏览器做薄，把搜索做快。Less browser. More search."
 
+# 移动端（Android/iOS）要求有 lib 目标；桌面 bin 复用同一套逻辑
+[lib]
+name = "trawl_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+path = "src/lib.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

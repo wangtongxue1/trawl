@@ -174,8 +174,11 @@ npx tauri build            # 发行版 + MSI（输出 target\release\bundle\msi\
 | Windows | `windows-latest` | `.msi` + `.exe`（NSIS）安装包 + 便携版 zip |
 | macOS (Apple Silicon) | `macos-latest` | `aarch64.dmg` |
 | macOS (Intel) | `macos-latest` | `x64.dmg` |
-| Android | `ubuntu-latest` | `arm64 .apk`（默认 debug 签名，可侧载；配置 keystore Secrets 后自动换正式签名） |
-| iOS（可选） | `macos-latest` | `.ipa`（手动触发并勾选 build_ios，需签名 Secrets） |
+| Android | `ubuntu-latest` | ⏸️ **已暂停**：Tauri 移动端不支持桌面专属的多 webview API
+（`Window::add_child`、`Webview::set_bounds/show/hide/close`、`decorations` 等），
+当前「主窗口 + chrome webview + 每标签一个 webview」的桌面架构需重写为
+移动端单 webview UI 后才能出 APK（job 已保留，`if: false` 禁用） |
+| iOS（可选） | `macos-latest` | ⏸️ 已暂停（同 Android 原因） |
 
 另有 `.github/workflows/ci.yml`：每次 push / PR 在 Windows / macOS / Linux
 三平台跑 `cargo check` + `cargo test`（13 个单元测试），确保改动不破坏跨平台编译。

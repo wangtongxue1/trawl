@@ -529,9 +529,35 @@ fn data_root() -> PathBuf {
         let _ = std::fs::create_dir_all(p);
         return p.clone();
     }
-    let base = std::env::var("USERPROFILE")
-        .map(|h| PathBuf::from(h).join("AppData").join("LocalLow").join("Trawl"))
-        .unwrap_or_else(|_| std::env::temp_dir().join("com.trawl.browser"));
+    // Windows：%USERPROFILE%\AppData\LocalLow\Trawl（沿用历史位置）
+    // macOS：~/Library/Application Support/Trawl
+    // Linux：~/.local/share/Trawl（遵循 XDG）
+    #[cfg(desktop)]
+    let base = {
+        #[cfg(windows)]
+        {
+            std::env::var("USERPROFILE")
+                .map(|h| PathBuf::from(h).join("AppData").join("LocalLow").join("Trawl"))
+                .unwrap_or_else(|_| std::env::temp_dir().join("com.trawl.browser"))
+        }
+        #[cfg(not(windows))]
+        {
+            let home = std::env::var("HOME").unwrap_or_default();
+            if home.is_empty() {
+                std::env::temp_dir().join("com.trawl.browser")
+            } else if cfg!(target_os = "macos") {
+                PathBuf::from(&home).join("Library").join("Application Support").join("Trawl")
+            } else {
+                // XDG_DATA_HOME 未设置时按默认 ~/.local/share
+                match std::env::var("XDG_DATA_HOME") {
+                    Ok(d) if !d.is_empty() => PathBuf::from(d).join("Trawl"),
+                    _ => PathBuf::from(&home).join(".local").join("share").join("Trawl"),
+                }
+            }
+        }
+    };
+    #[cfg(mobile)]
+    let base = std::env::temp_dir().join("com.trawl.browser");
     let _ = std::fs::create_dir_all(&base);
     base
 }
@@ -540,11 +566,24 @@ fn webview_data_dir() -> PathBuf {
     data_root().join("webview-data")
 }
 
+/// 本地资源协议根地址（所有平台统一入口）。
+/// Tauri 内部规则（manager::get_app_url）：Windows/Android 是
+/// `http://tauri.localhost/`，macOS/iOS/Linux 是 `tauri://localhost/`。
+/// 之前桌面端硬编码了 http://tauri.localhost，导致 macOS 版 chrome/内容区
+/// 全部无法加载（打开即白屏），必须按平台选择。
+fn tauri_origin() -> &'static str {
+    if cfg!(any(windows, target_os = "android")) {
+        "http://tauri.localhost/"
+    } else {
+        "tauri://localhost/"
+    }
+}
+
 /// 本地页面 URL 带版本号：WebView2 会把 tauri.localhost 资源持久缓存到磁盘，
 /// 升级 exe 后旧 HTML 会被缓存复活（表现为「改了没生效」）。带 ?v= 后每次发版 URL 变化，绕开缓存。
 fn versioned_url(path: &str) -> String {
     let sep = if path.contains('?') { '&' } else { '?' };
-    format!("http://tauri.localhost/{}{}v={}", path, sep, env!("CARGO_PKG_VERSION"))
+    format!("{}{}{}v={}", tauri_origin(), path, sep, env!("CARGO_PKG_VERSION"))
 }
 
 fn encode_query(s: &str) -> String {
@@ -4572,9 +4611,22 @@ fn reveal_download(path: String) {
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .spawn();
     }
+    // macOS：Finder 选中文件；Linux：打开所在目录
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .args(["-R", &path])
+            .spawn();
+    }
+    #[cfg(all(not(windows), not(target_os = "macos")))]
+    {
+        if let Some(dir) = std::path::Path::new(&path).parent() {
+            let _ = std::process::Command::new("xdg-open").arg(dir).spawn();
+        }
+    }
 }
 
-/// 在资源管理器里打开指定目录
+/// 在系统文件管理器里打开指定目录
 fn open_dir(dir: PathBuf) {
     let _ = std::fs::create_dir_all(&dir);
     #[cfg(windows)]
@@ -4585,9 +4637,13 @@ fn open_dir(dir: PathBuf) {
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .spawn();
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
     {
-        let _ = dir;
+        let _ = std::process::Command::new("open").arg(&dir).spawn();
+    }
+    #[cfg(all(not(windows), not(target_os = "macos")))]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(&dir).spawn();
     }
 }
 
@@ -5179,11 +5235,7 @@ static MOB_DATA_ROOT: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 /// 「回主页」跳转，运行时还会被 MOB_HOME（真实解析结果）覆盖。
 #[cfg(mobile)]
 fn mob_base() -> &'static str {
-    if cfg!(any(windows, target_os = "android")) {
-        "http://tauri.localhost/"
-    } else {
-        "tauri://localhost/"
-    }
+    tauri_origin()
 }
 
 #[cfg(mobile)]

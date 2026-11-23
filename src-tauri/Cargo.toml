@@ -1,6 +1,6 @@
 [package]
 name = "trawl"
-version = "0.7.20"
+version = "0.7.21"
 edition = "2021"
 description = "Trawl 元搜浏览器 — 把浏览器做薄，把搜索做快。Less browser. More search."
 
@@ -44,6 +44,15 @@ tauri-plugin-single-instance = "2"
 # TLS 用系统实现（Windows=schannel / macOS=Security.framework），避免 rustls 的
 # ring C 依赖在部分 MSVC 工具链下编译失败。
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "native-tls"] }
+
+# macOS 专属：钥匙串存储密码（security-framework 的 passwords 模块）+
+# Touch ID / 登录密码验证（LocalAuthentication，经 objc2 绑定）
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3"
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-local-authentication = "0.3"
+block2 = "0.6"
 
 [profile.release]
 lto = false

@@ -3072,6 +3072,53 @@ fn dpapi_unprotect(hex: &str) -> Result<String, String> {
     Ok(plain)
 }
 
+/// 密码存储的平台抽象：Windows=DPAPI 密文；macOS=系统钥匙串（blob 仅存占位标记）；
+/// 其它平台（Android/Linux）=不支持，安全降级为空。
+#[cfg(target_os = "macos")]
+const PW_KEYCHAIN_SERVICE: &str = "com.trawl.browser.passwords";
+
+/// 加密密码并返回可落盘的字符串。id 在 macOS 下作为钥匙串 account。
+#[cfg(windows)]
+fn pw_protect(_id: &str, plain: &str) -> Result<String, String> {
+    dpapi_protect(plain)
+}
+#[cfg(target_os = "macos")]
+fn pw_protect(id: &str, plain: &str) -> Result<String, String> {
+    security_framework::passwords::set_generic_password(PW_KEYCHAIN_SERVICE, id, plain.as_bytes())
+        .map_err(|e| format!("钥匙串保存失败: {}", e))?;
+    Ok("keychain".into())
+}
+#[cfg(not(any(windows, target_os = "macos")))]
+fn pw_protect(_id: &str, _plain: &str) -> Result<String, String> {
+    Err("此平台暂不支持密码管理".into())
+}
+
+/// 解密密码。macOS 从钥匙串按 id 读取（blob 是占位标记）。
+#[cfg(windows)]
+fn pw_unprotect(_id: &str, blob: &str) -> Result<String, String> {
+    dpapi_unprotect(blob)
+}
+#[cfg(target_os = "macos")]
+fn pw_unprotect(id: &str, _blob: &str) -> Result<String, String> {
+    let bytes = security_framework::passwords::get_generic_password(PW_KEYCHAIN_SERVICE, id)
+        .map_err(|e| format!("钥匙串读取失败: {}", e))?;
+    Ok(String::from_utf8_lossy(&bytes).to_string())
+}
+#[cfg(not(any(windows, target_os = "macos")))]
+fn pw_unprotect(_id: &str, _blob: &str) -> Result<String, String> {
+    Ok(String::new())
+}
+
+/// 删除密码（macOS 需要同步删除钥匙串条目）。
+#[cfg(windows)]
+fn pw_delete(_id: &str) {}
+#[cfg(target_os = "macos")]
+fn pw_delete(id: &str) {
+    let _ = security_framework::passwords::delete_generic_password(PW_KEYCHAIN_SERVICE, id);
+}
+#[cfg(not(any(windows, target_os = "macos")))]
+fn pw_delete(_id: &str) {}
+
 fn load_pw_records() -> Vec<PwRecord> {
     load_json_list::<PwRecord>(PASSWORDS_FILE).unwrap_or_default()
 }
@@ -3084,20 +3131,13 @@ fn save_pw_records(list: &[PwRecord]) {
 
 #[tauri::command]
 fn pw_list() -> Vec<PwEntry> {
-    #[cfg(windows)]
-    {
-        load_pw_records()
-            .into_iter()
-            .filter_map(|r| {
-                let password = dpapi_unprotect(&r.blob).unwrap_or_default();
-                Some(PwEntry { id: r.id, site: r.site, username: r.username, password, note: r.note })
-            })
-            .collect()
-    }
-    #[cfg(not(windows))]
-    {
-        Vec::new()
-    }
+    load_pw_records()
+        .into_iter()
+        .filter_map(|r| {
+            let password = pw_unprotect(&r.id, &r.blob).unwrap_or_default();
+            Some(PwEntry { id: r.id, site: r.site, username: r.username, password, note: r.note })
+        })
+        .collect()
 }
 
 #[tauri::command]
@@ -3106,15 +3146,13 @@ fn pw_add(site: String, username: String, password: String, note: Option<String>
     if site.is_empty() {
         return Err("站点不能为空".to_string());
     }
-    #[cfg(windows)]
-    let blob = dpapi_protect(&password)?;
-    #[cfg(not(windows))]
-    let blob = String::new();
+    let id = gen_id("pw");
+    let blob = pw_protect(&id, &password)?;
     let mut list = load_pw_records();
     if list.len() >= 200 {
         return Err("密码条目已达上限（200）".to_string());
     }
-    list.push(PwRecord { id: gen_id("pw"), site, username, blob, note: note.unwrap_or_default() });
+    list.push(PwRecord { id, site, username, blob, note: note.unwrap_or_default() });
     save_pw_records(&list);
     Ok(())
 }
@@ -3122,10 +3160,7 @@ fn pw_add(site: String, username: String, password: String, note: Option<String>
 /// 修改一条已保存的密码（用户名 / 密码 / 备注任一可改，密码改动后重新加密落盘）
 #[tauri::command]
 fn pw_update(id: String, username: String, password: String, note: Option<String>) -> Result<(), String> {
-    #[cfg(windows)]
-    let blob = dpapi_protect(&password)?;
-    #[cfg(not(windows))]
-    let blob = String::new();
+    let blob = pw_protect(&id, &password)?;
     let mut list = load_pw_records();
     let rec = list
         .iter_mut()
@@ -3140,7 +3175,7 @@ fn pw_update(id: String, username: String, password: String, note: Option<String
     Ok(())
 }
 
-/// Windows Hello 本机身份验证（Windows 登录密码 / PIN / 指纹 / 人脸）。
+/// 本机身份验证：Windows Hello / macOS Touch ID 或登录密码。
 /// 密码管理工具进入站点详情前必须通过。返回 verified / not_available / denied。
 #[tauri::command]
 async fn verify_user_consent() -> String {
@@ -3164,7 +3199,37 @@ async fn verify_user_consent() -> String {
                 .unwrap_or(false);
             if verified { "verified".to_string() } else { "denied".to_string() }
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "macos")]
+        {
+            use block2::RcBlock;
+            use objc2::runtime::Bool;
+            use objc2_foundation::{NSError, NSString};
+            use objc2_local_authentication::{LAContext, LAPolicy};
+            let ctx = unsafe { LAContext::new() };
+            // DeviceOwnerAuthentication：Touch ID 可用时走指纹，否则弹登录密码。
+            // 先做可用性预检，未 enroll / 未设置密码直接返回 not_available 让前端降级确认。
+            if unsafe { ctx.canEvaluatePolicy_error(LAPolicy::DeviceOwnerAuthentication) }.is_err() {
+                return "not_available".to_string();
+            }
+            let reason = NSString::from_str("验证本机身份后才能查看密码");
+            let (tx, rx) = std::sync::mpsc::channel::<bool>();
+            let block: RcBlock<dyn Fn(Bool, *mut NSError)> =
+                RcBlock::new(move |ok: Bool, _err: *mut NSError| { let _ = tx.send(ok.as_bool()); });
+            unsafe {
+                ctx.evaluatePolicy_localizedReason_reply(
+                    LAPolicy::DeviceOwnerAuthentication,
+                    &reason,
+                    &block,
+                );
+            }
+            // 等待用户操作（Touch ID / 密码），设 5 分钟上限防止永久挂起
+            match rx.recv_timeout(std::time::Duration::from_secs(300)) {
+                Ok(true) => "verified".to_string(),
+                Ok(false) => "denied".to_string(),
+                Err(_) => "denied".to_string(),
+            }
+        }
+        #[cfg(not(any(windows, target_os = "macos")))]
         {
             "not_available".to_string()
         }
@@ -3174,6 +3239,7 @@ async fn verify_user_consent() -> String {
 
 #[tauri::command]
 fn pw_del(id: String) {
+    pw_delete(&id);
     let mut list = load_pw_records();
     list.retain(|r| r.id != id);
     save_pw_records(&list);
@@ -3228,7 +3294,6 @@ fn pw_import_csv(path: String) -> Result<usize, String> {
             records.push((s, u, p));
         }
     }
-    #[cfg(windows)]
     {
         let existing = load_pw_records();
         let mut list = existing.clone();
@@ -3243,16 +3308,13 @@ fn pw_import_csv(path: String) -> Result<usize, String> {
             if list.len() >= 200 {
                 break;
             }
-            let blob = dpapi_protect(&password)?;
-            list.push(PwRecord { id: gen_id("pw"), site, username, blob, note: String::new() });
+            let id = gen_id("pw");
+            let blob = pw_protect(&id, &password)?;
+            list.push(PwRecord { id, site, username, blob, note: String::new() });
             added += 1;
         }
         save_pw_records(&list);
         Ok(added)
-    }
-    #[cfg(not(windows))]
-    {
-        Ok(0)
     }
 }
 

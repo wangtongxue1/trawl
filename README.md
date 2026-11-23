@@ -22,8 +22,8 @@ Trawl 取意「拖网」——一张网撒过所有搜索引擎，捞回全部�
   设置 → 关于 Trawl 可手动检查
 - **扩展系统**：内置插件（页内沉浸式翻译 / 链接净化 / 关闭确认 / 阅读模式）+ 本地未打包扩展
   （manifest 校验 + content_scripts 自动注入）
-- **本机密码管理**（`trawl://passwords`，Windows 专属）：DPAPI 加密、Windows Hello 验证、
-  CSV 导入、密码检查
+- **本机密码管理**（`trawl://passwords`）：Windows 用 DPAPI + Windows Hello 验证；macOS 用系统钥匙串 +
+  Touch ID / 登录密码验证（v0.7.21 起）；CSV 导入、密码检查
 - **分屏 / Glance 预览**：左右/上下分屏、Alt+点击 Glance 预览
 - **移动端（Android）**：单 webview 架构——`mobile.html` 主页（搜索 / 标签列表 / 书签 / 底部设置面板）+
   远程页面注入「‹ 后退 / ⌂ 主页」浮层，标签保留元信息
@@ -34,7 +34,7 @@ Trawl 取意「拖网」——一张网撒过所有搜索引擎，捞回全部�
 | 平台 | 状态 | 说明 |
 |------|------|------|
 | Windows x64 | ✅ 完整支持 | 主力平台，全部功能可用 |
-| macOS 12+（Intel / Apple Silicon） | ✅ 支持 | v0.7.20 修复启动白屏（本地资源协议地址按平台区分）；密码管理与截图暂缺 |
+| macOS 12+（Intel / Apple Silicon） | ✅ 支持 | v0.7.20 修复启动白屏（本地资源协议地址按平台区分）；v0.7.21 起密码管理可用（钥匙串 + Touch ID）；截图暂缺 |
 | Android | ✅ 支持侧载 | 单 webview 架构，debug 签名 APK 可直接安装；硬件返回键会退出应用（已知限制） |
 | iOS | ⏸️ 暂停 | 移动端架构已就绪，配置签名 Secrets 后可启用 |
 | HarmonyOS | ❌ | Tauri 暂不支持，需独立 ArkTS 工程 |

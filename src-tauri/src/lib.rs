@@ -2917,14 +2917,11 @@ fn import_bookmarks(app: AppHandle, source: String, path: Option<String>) -> Res
 }
 
 /// 递归收集 Chrome Bookmarks JSON 里 type=url 的节点
+/// roots 是 object（bookmark_bar/other/synced），必须遍历其 value；
+/// 每个 folder 的 children 是 array，url 节点直接收集。
 fn collect_bookmark_nodes(node: Option<&serde_json::Value>, out: &mut Vec<Bookmark>) {
     let Some(v) = node else { return };
-    if let Some(arr) = v.as_array() {
-        for x in arr {
-            collect_bookmark_nodes(Some(x), out);
-        }
-        return;
-    }
+    // url 节点先识别并收集（它本身也是 object，必须在 object 遍历前处理）
     if v.get("type").and_then(|x| x.as_str()) == Some("url") {
         let url = v.get("url").and_then(|x| x.as_str()).unwrap_or("").to_string();
         let title = v
@@ -2935,9 +2932,20 @@ fn collect_bookmark_nodes(node: Option<&serde_json::Value>, out: &mut Vec<Bookma
         if url.starts_with("http") {
             out.push(Bookmark { url, title });
         }
+        return;
     }
-    if let Some(children) = v.get("children") {
-        collect_bookmark_nodes(Some(children), out);
+    // array：逐个递归
+    if let Some(arr) = v.as_array() {
+        for x in arr {
+            collect_bookmark_nodes(Some(x), out);
+        }
+        return;
+    }
+    // object：roots 的 bookmark_bar/other/synced、folder 的 children 都在这里递归
+    if let Some(map) = v.as_object() {
+        for (_, child) in map {
+            collect_bookmark_nodes(Some(child), out);
+        }
     }
 }
 
@@ -5632,6 +5640,37 @@ mod tests {
     }
     fn settings_with(engines: Vec<SearchEngine>, def: &str) -> Settings {
         Settings { engines, default_engine: def.into(), ..Settings::default() }
+    }
+
+    #[test]
+    fn chrome_bookmarks_roots_object_parsed() {
+        // Chrome/Edge 的 Bookmarks 文件：roots 是 object（bookmark_bar/other/synced），
+        // 每个 folder 才有 children —— 必须递归遍历 object 的 value
+        let json = serde_json::json!({
+            "checksum": "x",
+            "roots": {
+                "bookmark_bar": {
+                    "type": "folder", "name": "Bookmarks bar",
+                    "children": [
+                        {"type": "url", "name": "Bing", "url": "https://www.bing.com/"},
+                        {"type": "folder", "name": "子文件夹", "children": [
+                            {"type": "url", "name": "GitHub", "url": "https://github.com/"}
+                        ]}
+                    ]
+                },
+                "other": {"type": "folder", "name": "Other bookmarks", "children": [
+                    {"type": "url", "name": "百度", "url": "https://www.baidu.com/"}
+                ]},
+                "synced": {"type": "folder", "name": "Mobile bookmarks", "children": []}
+            },
+            "version": 1
+        });
+        let mut out = Vec::new();
+        collect_bookmark_nodes(json.get("roots"), &mut out);
+        assert_eq!(out.len(), 3, "应收集全部 3 条书签（含嵌套文件夹）");
+        assert!(out.iter().any(|b| b.url == "https://www.bing.com/"));
+        assert!(out.iter().any(|b| b.url == "https://github.com/"));
+        assert!(out.iter().any(|b| b.url == "https://www.baidu.com/"));
     }
 
     #[test]

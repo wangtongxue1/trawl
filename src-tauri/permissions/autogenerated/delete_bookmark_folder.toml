@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-delete-bookmark-folder"
+description = "Enables the delete_bookmark_folder command without any pre-configured scope."
+commands.allow = ["delete_bookmark_folder"]
+
+[[permission]]
+identifier = "deny-delete-bookmark-folder"
+description = "Denies the delete_bookmark_folder command without any pre-configured scope."
+commands.deny = ["delete_bookmark_folder"]

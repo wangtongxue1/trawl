@@ -2846,6 +2846,7 @@ fn parse_numbered_translation(raw: &str, count: usize) -> Vec<String> {
 
 /// 主翻译通道：B站 Index-Translate 免费文本翻译 API（无需 Key / Cookie，国内直连）。
 ///  OpenAI 兼容格式，批量把多段文本一次翻完，用编号对齐。
+#[cfg(desktop)]
 fn translate_via_bilibili(texts: &[String], to: &str) -> Result<Vec<String>, String> {
     // B站网关会拒绝非浏览器 UA（返回 412），必须带浏览器 UA
     let client = reqwest::blocking::Client::builder()
@@ -2894,6 +2895,7 @@ fn translate_via_bilibili(texts: &[String], to: &str) -> Result<Vec<String>, Str
 }
 
 /// 备用翻译通道：Google gtx（海外网络可用时降级）。国内通常不通，仅作兜底。
+#[cfg(desktop)]
 fn translate_via_google(texts: &[String], to: &str) -> Result<Vec<String>, String> {
     let client = reqwest::blocking::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")

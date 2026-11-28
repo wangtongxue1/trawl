@@ -23,6 +23,7 @@ fn main() {
         "open_standalone_window", "open_tablist", "page_pressed", "print_page",
         "promote_glance", "push_suggest", "pw_add", "pw_del",
         "pw_import_csv", "pw_list", "pw_reveal", "pw_check", "pw_confirm_insecure", "pw_update", "remove_bookmark",
+        "create_bookmark_folder", "rename_bookmark_folder", "delete_bookmark_folder", "move_bookmark", "rename_bookmark",
         "rename_folder", "rename_workspace", "reset_settings", "resize_overlay", "reopen_tab",
         "reveal_download", "save_extensions", "save_settings", "set_autostart",
         "set_pins", "skip_update", "smart_organize", "sort_tabs",

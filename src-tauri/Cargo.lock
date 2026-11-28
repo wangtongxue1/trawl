@@ -4373,7 +4373,7 @@ dependencies = [
 
 [[package]]
 name = "trawl"
-version = "0.7.23"
+version = "0.7.24"
 dependencies = [
  "block2",
  "objc2",

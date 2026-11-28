@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-dialog",
+  "description": "文件选择对话框权限，仅桌面端需要（Android 未注册 dialog 插件，不能放全局 default）。",
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "macOS",
+    "windows",
+    "linux"
+  ],
+  "permissions": [
+    "dialog:allow-open"
+  ]
+}

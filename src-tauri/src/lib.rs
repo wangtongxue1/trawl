@@ -31,6 +31,7 @@ const HOME_URL: &str = "https://so.qq.com";
 const STATE_FILE: &str = "state.json";
 const SETTINGS_FILE: &str = "settings.json";
 const BOOKMARKS_FILE: &str = "bookmarks.json";
+const BOOKMARK_FOLDERS_FILE: &str = "bookmark_folders.json";
 const HISTORY_FILE: &str = "history.json";
 const EXTENSIONS_FILE: &str = "extensions.json";
 const PASSWORDS_FILE: &str = "passwords.json";
@@ -415,6 +416,8 @@ struct StatePayload {
     splitVertical: bool,
     folders: Vec<FolderInfo>,
     bookmarks: Vec<Bookmark>,
+    /// 书签文件夹路径列表（含空文件夹），"/" 分隔。前端据此画文件夹树
+    bookmarkFolders: Vec<String>,
     settings: Settings,
     downloading: usize,
 }
@@ -466,6 +469,10 @@ struct AppState {
     glance: Mutex<Option<String>>,
     folders: Mutex<Vec<Folder>>,
     bookmarks: Mutex<Vec<Bookmark>>,
+    /// 书签文件夹路径（"/" 分隔），独立于书签存在以支持空文件夹
+    bookmark_folders: Mutex<Vec<String>>,
+    /// 每个标签 webview 上次设置的 bounds，避免重复 set_bounds 造成页面闪一下
+    bounds_cache: Mutex<std::collections::HashMap<String, tauri::Rect>>,
     history: Mutex<Vec<HistoryEntry>>,
     downloads: Mutex<Vec<DownloadInfo>>,
     overlay: Mutex<Option<OverlayState>>,
@@ -518,6 +525,8 @@ impl Default for AppState {
             glance: Mutex::new(None),
             folders: Mutex::new(Vec::new()),
             bookmarks: Mutex::new(Vec::new()),
+            bookmark_folders: Mutex::new(Vec::new()),
+            bounds_cache: Mutex::new(std::collections::HashMap::new()),
             history: Mutex::new(Vec::new()),
             downloads: Mutex::new(Vec::new()),
             overlay: Mutex::new(None),
@@ -749,6 +758,7 @@ fn payload_of(state: &AppState) -> StatePayload {
         splitVertical: *state.split_vertical.lock().unwrap(),
         folders,
         bookmarks: state.bookmarks.lock().unwrap().clone(),
+        bookmarkFolders: state.bookmark_folders.lock().unwrap().clone(),
         settings: state.settings.lock().unwrap().clone(),
         downloading,
     }
@@ -1015,6 +1025,29 @@ fn save_bookmarks(state: &AppState) {
     if let Ok(json) = serde_json::to_string(&bookmarks) {
         if let Err(e) = write_atomic(&data_root().join(BOOKMARKS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
+}
+
+/// 保存书签文件夹路径列表（独立文件，兼容老数据）
+fn save_bookmark_folders(state: &AppState) {
+    let folders = state.bookmark_folders.lock().unwrap().clone();
+    if let Ok(json) = serde_json::to_string(&folders) {
+        if let Err(e) = write_atomic(&data_root().join(BOOKMARK_FOLDERS_FILE), &json) {
+            debug_log(&format!("写书签文件夹失败: {}", e));
+        }
+    }
+}
+
+/// 收集书签 folder 字段里出现过的所有路径（含各级父路径），用于从老数据重建文件夹树
+fn folders_from_bookmarks(bookmarks: &[Bookmark]) -> Vec<String> {
+    let mut set: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for b in bookmarks {
+        if b.folder.is_empty() { continue; }
+        let segs: Vec<&str> = b.folder.split('/').filter(|s| !s.is_empty()).collect();
+        for i in 1..=segs.len() {
+            set.insert(segs[..i].join("/"));
+        }
+    }
+    set.into_iter().collect()
 }
 
 fn save_history(state: &AppState) {
@@ -1396,6 +1429,8 @@ fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String>
     window
         .add_child(builder, LogicalPosition::new(x, y), LogicalSize::new(w, h))
         .map_err(|e| format!("创建标签页失败: {}", e))?;
+    // webview 重建后 bounds 缓存失效，必须让 show_active_tab 重新定位
+    app.state::<AppState>().bounds_cache.lock().unwrap().remove(&label);
     // 先隐藏，交给 show_active_tab 在正确位置显示，避免所有标签同时闪一下
     if let Some(wv) = app.get_webview(&label) {
         let _ = wv.hide();
@@ -1501,8 +1536,18 @@ fn show_active_tab(app: &AppHandle, state: &AppState) {
             // 之前先保持隐藏（ready_webviews），避免黑屏/白屏闪烁。
             let ready = state.ready_webviews.lock().unwrap().contains(&id);
             if ready {
-                // 先定位再显示，避免从旧位置闪到新位置
-                let _ = wv.set_bounds(bounds_for_tab(state, &id, &active));
+                // 先定位再显示，避免从旧位置闪到新位置。
+                // 关键：仅在 bounds 真变化时 set_bounds——WebView2 重设即使坐标相同也会重绘，
+                // 数据类 state 事件会频繁走到这里，不设防就表现为「每次点击页面跳一下」。
+                let bounds = bounds_for_tab(state, &id, &active);
+                let changed = {
+                    let mut cache = state.bounds_cache.lock().unwrap();
+                    match cache.get(&id) {
+                        Some(prev) if prev.position == bounds.position && prev.size == bounds.size => false,
+                        _ => { cache.insert(id.clone(), bounds.clone()); true }
+                    }
+                };
+                if changed { let _ = wv.set_bounds(bounds); }
                 let _ = wv.show();
             }
         } else {
@@ -2138,6 +2183,145 @@ fn remove_bookmark(app: AppHandle, url: String) {
     state.bookmarks.lock().unwrap().retain(|b| b.url != url);
     save_bookmarks(&state);
     push_state(&app);
+}
+
+// ============ 书签文件夹管理 ============
+// 文件夹是独立路径列表（bookmark_folders.json），书签通过 folder 字符串归属。
+// 所有变更都同时维护「文件夹列表」与「书签的 folder 前缀」，再统一写盘+推送。
+
+/// 新建书签文件夹。parent 为空表示根级；name 不能含 "/"；同名直接返回 false。
+#[tauri::command]
+fn create_bookmark_folder(app: AppHandle, parent: String, name: String) -> bool {
+    let name = name.trim().to_string();
+    if name.is_empty() || name.contains('/') { return false; }
+    let path = if parent.is_empty() { name.clone() } else { format!("{}/{}", parent.trim_end_matches('/'), name) };
+    let state = app.state::<AppState>();
+    {
+        let mut folders = state.bookmark_folders.lock().unwrap();
+        if folders.contains(&path) { return false; }
+        // 父路径链也要存在（理论上已存在，兜底补上）
+        let segs: Vec<&str> = path.split('/').collect();
+        for i in 1..segs.len() {
+            let p = segs[..i].join("/");
+            if !folders.contains(&p) { folders.push(p); }
+        }
+        folders.push(path);
+        folders.sort();
+    }
+    save_bookmark_folders(&state);
+    push_state(&app);
+    true
+}
+
+/// 重命名书签文件夹：改文件夹列表里的路径 + 所有子书签/子文件夹的 folder 前缀
+#[tauri::command]
+fn rename_bookmark_folder(app: AppHandle, old_path: String, new_name: String) -> bool {
+    let new_name = new_name.trim().to_string();
+    if new_name.is_empty() || new_name.contains('/') { return false; }
+    let parent = old_path.rsplit_once('/').map(|(p, _)| p).unwrap_or("");
+    let new_path = if parent.is_empty() { new_name.clone() } else { format!("{}/{}", parent, new_name) };
+    if old_path == new_path { return true; }
+    let state = app.state::<AppState>();
+    {
+        let mut folders = state.bookmark_folders.lock().unwrap();
+        if folders.contains(&new_path) { return false; }
+        let prefix = format!("{}/", old_path);
+        let mut updated = Vec::new();
+        for f in folders.iter() {
+            if f == &old_path { updated.push(new_path.clone()); }
+            else if f.starts_with(&prefix) { updated.push(format!("{}{}", new_path, &f[old_path.len()..])); }
+            else { updated.push(f.clone()); }
+        }
+        *folders = updated;
+        folders.sort();
+    }
+    {
+        let mut bookmarks = state.bookmarks.lock().unwrap();
+        let prefix = format!("{}/", old_path);
+        for b in bookmarks.iter_mut() {
+            if b.folder == old_path { b.folder = new_path.clone(); }
+            else if b.folder.starts_with(&prefix) { b.folder = format!("{}{}", new_path, &b.folder[old_path.len()..]); }
+        }
+    }
+    save_bookmark_folders(&state);
+    save_bookmarks(&state);
+    push_state(&app);
+    true
+}
+
+/// 删除书签文件夹：目录里的书签移到父目录（不删除书签，避免误删数据），子目录一并提升到父级
+#[tauri::command]
+fn delete_bookmark_folder(app: AppHandle, path: String) -> bool {
+    if path.is_empty() { return false; }
+    let parent = path.rsplit_once('/').map(|(p, _)| p.to_string()).unwrap_or_default();
+    let state = app.state::<AppState>();
+    {
+        let mut folders = state.bookmark_folders.lock().unwrap();
+        let prefix = format!("{}/", path);
+        // 删除本目录及子目录；父级子目录里若有同名冲突则跳过（极少见）
+        folders.retain(|f| f != &path && !f.starts_with(&prefix));
+    }
+    {
+        let mut bookmarks = state.bookmarks.lock().unwrap();
+        let prefix = format!("{}/", path);
+        for b in bookmarks.iter_mut() {
+            if b.folder == path || b.folder.starts_with(&prefix) {
+                b.folder = parent.clone();
+            }
+        }
+    }
+    save_bookmark_folders(&state);
+    save_bookmarks(&state);
+    push_state(&app);
+    true
+}
+
+/// 移动书签到指定文件夹（target_folder 为空表示移到根目录）
+#[tauri::command]
+fn move_bookmark(app: AppHandle, url: String, target_folder: String) -> bool {
+    let state = app.state::<AppState>();
+    let mut found = false;
+    {
+        let mut bookmarks = state.bookmarks.lock().unwrap();
+        if let Some(b) = bookmarks.iter_mut().find(|b| b.url == url) {
+            b.folder = target_folder.clone();
+            found = true;
+        }
+    }
+    if found {
+        // 目标文件夹链不存在则补建
+        if !target_folder.is_empty() {
+            let mut folders = state.bookmark_folders.lock().unwrap();
+            let segs: Vec<&str> = target_folder.split('/').collect();
+            for i in 1..=segs.len() {
+                let p = segs[..i].join("/");
+                if !folders.contains(&p) { folders.push(p); }
+            }
+            folders.sort();
+            save_bookmark_folders(&state);
+        }
+        save_bookmarks(&state);
+        push_state(&app);
+    }
+    found
+}
+
+/// 修改书签标题
+#[tauri::command]
+fn rename_bookmark(app: AppHandle, url: String, new_title: String) -> bool {
+    let new_title = new_title.trim().to_string();
+    if new_title.is_empty() { return false; }
+    let state = app.state::<AppState>();
+    let mut found = false;
+    {
+        let mut bookmarks = state.bookmarks.lock().unwrap();
+        if let Some(b) = bookmarks.iter_mut().find(|b| b.url == url) {
+            b.title = new_title;
+            found = true;
+        }
+    }
+    if found { save_bookmarks(&state); push_state(&app); }
+    found
 }
 
 /// 批量删除书签：一次写盘，避免逐条删除时重复 IO（全选几百条会明显卡顿）
@@ -3882,7 +4066,14 @@ fn restore_state(app: &AppHandle) {
     let state = app.state::<AppState>();
     *state.settings.lock().unwrap() = load_settings();
     if let Some(b) = load_json_list::<Bookmark>(BOOKMARKS_FILE) {
+        // 老数据兼容：文件夹列表中出现的路径也要补进来（避免旧书签名下文件夹树空白）
+        let mut f = load_json_list::<String>(BOOKMARK_FOLDERS_FILE).unwrap_or_default();
+        for extra in folders_from_bookmarks(&b) {
+            if !f.contains(&extra) { f.push(extra); }
+        }
+        *state.bookmark_folders.lock().unwrap() = f;
         *state.bookmarks.lock().unwrap() = b;
+        // 内存里已重建 folders；落盘留到首次文件夹操作时做，避免启动路径多余 IO
     }
     if let Some(h) = load_json_list::<HistoryEntry>(HISTORY_FILE) {
         *state.history.lock().unwrap() = h;
@@ -3987,6 +4178,12 @@ fn overlay_rect(state: &AppState, kind: &str) -> (f64, f64, f64, f64) {
             let ow = 560.0_f64.min(w - 48.0);
             let oh = (h * 0.62).min(480.0);
             (x + (w - ow) / 2.0, y + 56.0, ow, oh)
+        }
+        "bookmarks" => {
+            // 书签管理页是双栏（左文件夹树 + 右列表），比其它面板更宽才不挤
+            let ow = 780.0_f64.min(w - 48.0).max(560.0);
+            let oh = (h * 0.82).min(660.0);
+            (x + (w - ow) / 2.0, y + 32.0, ow, oh)
         }
         _ => {
             let ow = 620.0_f64.min(w - 48.0);
@@ -5561,6 +5758,11 @@ fn desktop_run() {
             toggle_split_orientation,
             toggle_bookmark,
             remove_bookmark,
+            create_bookmark_folder,
+            rename_bookmark_folder,
+            delete_bookmark_folder,
+            move_bookmark,
+            rename_bookmark,
             remove_bookmarks_batch,
             get_history,
             clear_history,
@@ -6231,6 +6433,11 @@ fn mobile_run() {
             remove_history_entry,
             toggle_bookmark,
             remove_bookmark,
+            create_bookmark_folder,
+            rename_bookmark_folder,
+            delete_bookmark_folder,
+            move_bookmark,
+            rename_bookmark,
             remove_bookmarks_batch,
             import_bookmarks,
             get_extensions,

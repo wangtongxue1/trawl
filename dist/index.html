@@ -3,42 +3,89 @@
 <head>
 <meta charset="UTF-8">
 <title>Trawl</title>
-<link rel="stylesheet" href="style.css?v=0.7.18">
+<link rel="stylesheet" href="style.css?v=0.7.23">
 <style>
 /* 更新提示条（Edge 式，右上角滑入） */
 #update-banner {
   position: fixed; top: 104px; right: 14px; z-index: 900;
   display: flex; align-items: center; gap: 12px;
   width: 340px; padding: 14px 16px;
-  background: #fff; color: #1f2329;
-  border: 1px solid rgba(17,24,39,.10); border-radius: 12px;
-  box-shadow: 0 12px 36px rgba(16,24,40,.24);
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-md);
   transform: translateX(380px); opacity: 0;
   transition: transform .28s cubic-bezier(.2,.8,.25,1), opacity .28s ease;
 }
 #update-banner:not(.hidden) { transform: translateX(0); opacity: 1; }
 #update-banner .ub-ic {
   width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
-  background: rgba(16,185,129,.12); color: #10b981;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
   display: grid; place-items: center;
 }
 #update-banner .ub-ic .ic { width: 18px; height: 18px; stroke-width: 1.8; }
 #update-banner .ub-main { flex: 1; min-width: 0; }
 #update-banner .ub-title { font-size: 13px; font-weight: 600; }
-#update-banner .ub-desc { font-size: 11.5px; color: #7b8794; margin-top: 3px; line-height: 1.5; }
+#update-banner .ub-desc { font-size: 12px; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
 #update-banner .ub-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
 #update-banner .ub-actions button {
   height: 26px; padding: 0 12px; border-radius: 7px;
-  font-family: inherit; font-size: 11.5px; cursor: pointer; white-space: nowrap;
+  font-family: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
 }
-#ub-now { border: none; background: #10b981; color: #fff; }
+#ub-now { border: none; background: var(--accent); color: #fff; }
 #ub-now:hover { filter: brightness(1.08); }
-#ub-later { border: 1px solid rgba(17,24,39,.14); background: transparent; color: #5a6672; }
-#ub-later:hover { border-color: #10b981; color: #10b981; }
+#ub-later { border: 1px solid var(--border); background: transparent; color: var(--text-dim); }
+#ub-later:hover { border-color: var(--accent); color: var(--accent); }
 :root[data-theme="dark"] #update-banner { background: #1e2228; color: #e8ebef; border-color: #2c323a; }
 :root[data-theme="dark"] #update-banner .ub-desc { color: #a9b3be; }
 :root[data-theme="dark"] #ub-later { border-color: #3a424c; color: #a9b3be; }
-:root[data-theme="dark"] #ub-later:hover { border-color: #10b981; color: #10b981; }
+:root[data-theme="dark"] #ub-later:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 无痕窗口标识（地址栏左侧，renderer.js 按 URL 参数显隐） */
+#incognito-badge {
+  display: none; align-items: center; gap: 4px;
+  height: 24px; padding: 0 9px; margin-right: 6px; flex-shrink: 0;
+  border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent-deep);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+#incognito-badge.on { display: inline-flex; }
+#incognito-badge svg { width: 13px; height: 13px; }
+
+/* 自绘询问对话框（替代原生 confirm/prompt，避免 WebView2 假死） */
+#ask-mask {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(15,22,30,.38);
+  display: flex; align-items: center; justify-content: center;
+}
+#ask-mask.hidden { display: none; }
+#ask-dialog {
+  width: min(360px, 90vw); background: var(--panel, #fff);
+  border: 1px solid var(--divider, #dde3ea); border-radius: 14px;
+  box-shadow: var(--shadow-md); padding: 18px 18px 14px;
+}
+#ask-title { font-size: 14px; font-weight: 600; color: var(--text, #1c2330); }
+#ask-msg {
+  font-size: 12.5px; color: var(--text-dim, #6b7480);
+  margin-top: 7px; line-height: 1.6; white-space: pre-wrap;
+}
+#ask-input {
+  width: 100%; margin-top: 12px; height: 34px;
+  border: 1px solid var(--divider, #dde3ea); border-radius: 8px;
+  background: var(--bg, #f6f7f9); color: var(--text, #1c2330);
+  padding: 0 10px; font-size: 13px; font-family: inherit; outline: none;
+}
+#ask-input:focus { border-color: var(--accent); }
+#ask-input.hidden { display: none; }
+#ask-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+#ask-btns button {
+  padding: 7px 16px; border-radius: 9px; font-size: 12.5px; cursor: pointer;
+  border: 1px solid var(--divider, #dde3ea); background: transparent;
+  color: var(--text, #1c2330); font-family: inherit;
+}
+#ask-btns button:hover { background: var(--chrome-hover, #f1f4f8); }
+#ask-btns #ask-ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+#ask-btns #ask-ok:hover { filter: brightness(1.08); }
 </style>
 </head>
 <body>
@@ -54,6 +101,8 @@
     <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></symbol>
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.8"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <!-- HTTP / 内部页用不带锁的地球图标，HTTPS 才显示 i-lock -->
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3.2 3 14.8 0 18"/><path d="M12 3c-3 3.2-3 14.8 0 18"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
     <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13.5l9 5 9-5"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
@@ -84,7 +133,7 @@
       <div id="tabs"></div>
       <button id="btn-newtab" class="strip-ic" title="新建标签页 (Ctrl+T)"><svg class="ic"><use href="#i-plus"/></svg></button>
       <div class="strip-spacer"></div>
-      <button id="btn-tablist" class="strip-ic" title="标签列表"><svg class="ic"><use href="#i-grid"/></svg></button>
+      <button id="btn-tablist" class="strip-ic" title="标签列表 (Ctrl+Shift+L)"><svg class="ic"><use href="#i-grid"/></svg></button>
       <div class="win-controls">
         <button id="win-min" title="最小化"><svg class="ic"><use href="#i-min"/></svg></button>
         <button id="win-max" title="最大化"><svg class="ic"><use href="#i-max"/></svg></button>
@@ -102,6 +151,7 @@
       </div>
 
       <div id="address-wrap">
+        <span id="incognito-badge" title="当前为无痕窗口，不记录浏览历史"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13h16"/><circle cx="8" cy="16.5" r="2.2"/><circle cx="16" cy="16.5" r="2.2"/><path d="M8 13c0-3 1.5-5 4-5s4 2 4 5"/></svg>无痕</span>
         <span id="addr-scheme"><svg class="ic"><use href="#i-lock"/></svg></span>
         <input id="address" type="text" spellcheck="false" autocomplete="off" placeholder="搜索，或输入网址" />
         <span id="addr-hint" class="hidden">回车打开</span>
@@ -155,5 +205,66 @@
   </div>
 
   <div id="chrome-toast"></div>
-  <script src="renderer.js?v=0.7.18"></script></body>
+
+  <!-- 自绘询问对话框（替代原生 confirm/prompt，renderer.js 驱动） -->
+  <div id="ask-mask" class="hidden">
+    <div id="ask-dialog" role="dialog" aria-modal="true" aria-labelledby="ask-title">
+      <div id="ask-title">确认</div>
+      <div id="ask-msg"></div>
+      <input id="ask-input" class="hidden" type="text" />
+      <div id="ask-btns">
+        <button id="ask-cancel" type="button">取消</button>
+        <button id="ask-ok" type="button">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js?v=0.7.23"></script>
+  <script>
+/* macOS 快捷键文案替换：只改显示文本，不影响 renderer.js 里的修饰键判断。
+   Windows 保持 Ctrl/Alt 原文；macOS 显示 ⌘/⌥。用 MutationObserver 覆盖动态渲染项。 */
+(function () {
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) return;
+  function repl(s) { return s.replace(/Ctrl\+/g, '⌘').replace(/Alt\+/g, '⌥'); }
+  function fix(root) {
+    // 文本节点（菜单项、按钮文案）
+    var walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var n;
+    while ((n = walk.nextNode())) {
+      if (n.nodeValue && (n.nodeValue.indexOf('Ctrl+') >= 0 || n.nodeValue.indexOf('Alt+') >= 0)) {
+        n.nodeValue = repl(n.nodeValue);
+      }
+    }
+    // title 悬浮提示不在文本节点里，按钮上的 Ctrl+ 提示要单独处理
+    if (root.querySelectorAll) {
+      var titled = root.querySelectorAll('[title]');
+      for (var i = 0; i < titled.length; i++) {
+        var t = titled[i].getAttribute('title');
+        if (t && (t.indexOf('Ctrl+') >= 0 || t.indexOf('Alt+') >= 0)) titled[i].setAttribute('title', repl(t));
+      }
+    }
+  }
+  fix(document.body);
+  try {
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) fix(node);
+          else if (node.nodeType === 3 && node.nodeValue && node.nodeValue.indexOf('Ctrl+') >= 0) {
+            node.nodeValue = repl(node.nodeValue);
+          }
+        });
+        // 动态写入的 title 也要同步（刷新按钮、书签更多按钮等）
+        if (m.type === 'attributes' && m.attributeName === 'title' && m.target && m.target.getAttribute) {
+          var t = m.target.getAttribute('title');
+          if (t && (t.indexOf('Ctrl+') >= 0 || t.indexOf('Alt+') >= 0)) m.target.setAttribute('title', repl(t));
+        }
+      });
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['title'] });
+  } catch {}
+})();
+  </script>
+
+</body>
 </html>

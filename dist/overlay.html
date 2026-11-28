@@ -7,8 +7,24 @@
 :root {
   --accent: #10b981; --accent-deep: #0b8f66;
   --panel: #ffffff; --bg: #f6f9f7; --border: #dfe7e1;
-  --text: #1f2937; --text-dim: #6b7280;
+  --text: #1f2937; --text-dim: #6b7280; --danger: #ef4444;
+  --shadow-sm: 0 1px 3px rgba(16,24,40,.10);
+  --shadow-md: 0 6px 20px rgba(16,24,40,.12);
 }
+/* 深色主题：浮层跟随 chrome 主题（由脚本读取 get_settings 设置 data-theme） */
+:root[data-theme="dark"] {
+  --panel: #262a31; --bg: #1d2025; --hover: rgba(255,255,255,.08);
+  --divider: rgba(255,255,255,.09); --border: rgba(255,255,255,.12);
+  --text: #e6e8eb; --text-dim: #98a2b3; --danger: #f87171;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+}
+/* 强调色四套（与 style.css 保持一致；浮层独立 webview 需自带规则） */
+:root[data-accent="purple"] { --accent: #8b5cf6; --accent-deep: #6d4ff5; }
+:root[data-accent="blue"]   { --accent: #3b82f6; --accent-deep: #2f6fe0; }
+:root[data-accent="orange"] { --accent: #f59e0b; --accent-deep: #d97706; }
+:root[data-accent="green"]  { --accent: #10b981; --accent-deep: #0b8f66; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   background: transparent;
@@ -26,12 +42,12 @@ button, input { font-family: inherit; }
   display: flex; flex-direction: column;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 16px 44px rgba(15,23,20,.22);
+  box-shadow: var(--shadow-md);
 }
 .head {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   font-size: 14px; font-weight: 600;
@@ -65,8 +81,15 @@ button, input { font-family: inherit; }
   border: none; background: transparent; color: var(--text-dim);
   cursor: pointer; font-size: 11px; flex-shrink: 0;
 }
-.row .del:hover { color: #dc2626; }
+.row .del:hover { color: var(--danger); }
 .row .reveal:hover { color: var(--accent-deep); }
+/* 下载面板：取消 / 重试 操作按钮与引导文案 */
+.row .dl-act {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text-dim);
+  cursor: pointer; font-size: 11px; flex-shrink: 0; border-radius: 6px; padding: 3px 8px;
+}
+.row .dl-act:hover { border-color: var(--accent); color: var(--accent-deep); }
+.row .dl-hint { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
 
 /* 下载面板 */
 .dl-main { min-width: 0; flex: 1; }
@@ -79,7 +102,7 @@ button, input { font-family: inherit; }
   flex-shrink: 0; color: var(--text-dim); font-size: 11px;
   white-space: nowrap;
 }
-.dl-line1 .meta.fail { color: #dc2626; }
+.dl-line1 .meta.fail { color: var(--danger); }
 .dl-line1 .meta.ok { color: var(--accent-deep); }
 .dl-bar {
   height: 3px; margin-top: 5px; border-radius: 2px;
@@ -93,6 +116,29 @@ button, input { font-family: inherit; }
 .dl-bar.indet i { width: 30%; animation: dlslide 1.2s ease-in-out infinite; }
 @keyframes dlslide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 
+/* 书签面板的文件夹分组标题 */
+.bm-group-head {
+  padding: 8px 10px 4px;
+  font-size: 12px; font-weight: 600; color: var(--accent-deep);
+  border-bottom: 1px solid var(--border);
+  margin-top: 4px;
+}
+/* 书签批量删除工具条 */
+.bm-bulk-bar {
+  display: flex; gap: 6px; padding: 4px 6px 8px;
+  border-bottom: 1px solid var(--border); margin-bottom: 4px;
+}
+.bm-bulk-btn {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 7px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+}
+.bm-bulk-btn:hover { border-color: var(--accent); color: var(--accent-deep); }
+.bm-bulk-btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.bm-bulk-btn:disabled { opacity: .45; cursor: not-allowed; }
+.bm-bulk-btn:disabled:hover { border-color: var(--border); color: var(--danger); }
+.bm-check { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+.row.bm-row-selected { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
 /* 页内查找条 */
 #findbar {
   width: 100%; height: 100%;
@@ -101,7 +147,7 @@ button, input { font-family: inherit; }
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(15,23,20,.18);
+  box-shadow: var(--shadow-md);
 }
 #findbar input {
   flex: 1; min-width: 0; height: 32px;
@@ -109,7 +155,7 @@ button, input { font-family: inherit; }
   background: var(--bg); color: var(--text);
   padding: 0 10px; font-size: 13px; outline: none;
 }
-#findbar input:focus { border-color: var(--accent); background: #fff; }
+#findbar input:focus { border-color: var(--accent); background: var(--panel); }
 #findbar button {
   border: none; border-radius: 8px;
   background: var(--bg); color: var(--text-dim);
@@ -131,7 +177,9 @@ button, input { font-family: inherit; }
   font-size: 13px; cursor: pointer;
 }
 .pitem:hover, .pitem.on { background: var(--bg); }
-.pitem .hint { margin-left: auto; color: var(--text-dim); font-size: 10px; }
+.pitem .hint { margin-left: auto; color: var(--text-dim); font-size: 11px; }
+/* 键盘焦点可见 */
+:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
 </style>
 </head>
 <body>
@@ -158,23 +206,92 @@ button, input { font-family: inherit; }
 </div>
 
 <script>
+// 跟随 chrome 主题（浮层独立 webview，需自行读取设置）
+try {
+  const core = window.__TAURI__.core;
+  core.invoke('get_settings').then(s => {
+    if (s && (s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+    document.documentElement.dataset.accent = (s && s.accent) || 'green';
+  }).catch(() => {});
+} catch {}
+
 const { invoke } = window.__TAURI__.core;
 const $ = (s) => document.querySelector(s);
+
+// 自绘确认弹窗（替代原生 window.confirm），返回 Promise<boolean>
+function askConfirm(msg) {
+  return new Promise(function (resolve) {
+    var old = document.getElementById('ask-confirm-mask');
+    if (old) old.remove();
+    var done = false;
+    function fin(v) { if (done) return; done = true; var w = document.getElementById('ask-confirm-mask'); if (w) w.remove(); resolve(v); }
+    var wrap = document.createElement('div');
+    wrap.id = 'ask-confirm-mask';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#1f2937;color:#e5e7eb;border:1px solid #374151;border-radius:12px;padding:18px 20px;max-width:320px;font-size:13px;line-height:1.6;box-shadow:0 12px 40px rgba(0,0,0,.35)';
+    var p = document.createElement('div');
+    p.textContent = msg;
+    var bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:14px';
+    function mk(label, primary) {
+      var b = document.createElement('button');
+      b.textContent = label;
+      b.style.cssText = 'padding:6px 14px;border-radius:8px;border:1px solid #374151;background:' + (primary ? 'var(--accent-deep, #0b8f66)' : 'transparent') + ';color:' + (primary ? '#fff' : '#e5e7eb') + ';cursor:pointer;font-size:13px';
+      b.onclick = function () { fin(primary); };
+      return b;
+    }
+    var cancelBtn = mk('取消', false);
+    bar.appendChild(cancelBtn);
+    bar.appendChild(mk('确定', true));
+    box.appendChild(p); box.appendChild(bar); wrap.appendChild(box);
+    wrap.addEventListener('click', function (e) { if (e.target === wrap) fin(false); });
+    wrap.tabIndex = -1;
+    document.body.appendChild(wrap);
+    cancelBtn.focus();
+    wrap.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); fin(false); } });
+  });
+}
+
 const action = new URLSearchParams(location.search).get('action') || '';
 
 let paletteItems = [];
 let paletteIndex = 0;
 let st = null;
 
+// 轻提示：浮层内就地显示，供下载取消/重试反馈使用
+function toast(msg) {
+  let t = $('#dl-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'dl-toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2937;color:#fff;padding:8px 16px;border-radius:999px;font-size:12px;z-index:99;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => { t.style.opacity = '0'; }, 2200);
+}
+
 const closeOverlay = () => invoke('close_overlay').catch(() => {});
 $('#panel-close').onclick = closeOverlay;
 $('#find-close').onclick = closeOverlay;
 
 document.addEventListener('keydown', (e) => {
+  // askConfirm 打开时 Esc 只关对话框（其自身监听已处理），不关整个浮层
+  if (document.getElementById('ask-confirm-mask')) {
+    if (e.key === 'Escape') e.preventDefault();
+    return;
+  }
   if (e.key === 'Escape') { e.preventDefault(); closeOverlay(); }
 });
 
 function showPanel(title) {
+  // 切换到任何面板都停掉下载轮询，避免它每秒把命令面板/查找条顶掉（M10）
+  if (dlTimer) { clearInterval(dlTimer); dlTimer = null; }
   $('#findbar').classList.add('hidden');
   $('#palette').classList.add('hidden');
   $('#panel').classList.remove('hidden');
@@ -189,6 +306,7 @@ async function loadState(force) {
 /* ==================== 页内查找 ==================== */
 
 function openFind() {
+  if (dlTimer) { clearInterval(dlTimer); dlTimer = null; }
   $('#panel').classList.add('hidden');
   $('#palette').classList.add('hidden');
   $('#findbar').classList.remove('hidden');
@@ -207,11 +325,16 @@ function openFind() {
 function row(title, sub, onClick, extra) {
   const el = document.createElement('div');
   el.className = 'row';
+  el.setAttribute('role', 'button');
+  el.setAttribute('tabindex', '0');
   el.innerHTML = '<span class="title"></span><span class="url"></span>';
   el.querySelector('.title').textContent = title;
   el.querySelector('.url').textContent = sub;
   if (extra) el.appendChild(extra);
   el.onclick = onClick;
+  el.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); if (typeof el.onclick === 'function') el.onclick(ev); }
+  });
   return el;
 }
 
@@ -219,7 +342,13 @@ async function openHistory() {
   showPanel('历史记录');
   $('#panel-extra').classList.remove('hidden');
   $('#panel-extra').textContent = '清空历史';
-  $('#panel-extra').onclick = async () => { await invoke('clear_history'); st = null; openHistory(); };
+  $('#panel-extra').onclick = async () => {
+    if (!(await askConfirm('确定清空全部历史记录吗？此操作不可撤销。'))) return;
+    try { await invoke('clear_history'); }
+    catch (e) { $('#panel-body').insertAdjacentHTML('afterbegin', '<div class="empty">清空失败，请重试</div>'); return; }
+    st = null;
+    openHistory();
+  };
   const body = $('#panel-body');
   body.innerHTML = '';
   let items = [];
@@ -228,11 +357,15 @@ async function openHistory() {
   if (!items.length) { body.innerHTML = '<div class="empty">还没有历史记录</div>'; return; }
   for (const h of items) {
     body.appendChild(row(h.title || '(无标题)', h.url, async () => {
-      try { await invoke('navigate', { input: h.url }); } catch {}
+      try { await invoke('navigate', { input: h.url }); }
+      catch (err) { toast('打开失败，请重试'); return; }
       closeOverlay();
     }));
   }
 }
+
+let bmSelectMode = false;      // 书签面板是否处于批量选择模式
+let bmSelected = new Set();    // 选中的书签 url
 
 async function openBookmarks() {
   showPanel('书签');
@@ -245,24 +378,135 @@ async function openBookmarks() {
   // 导入块按需显示：点「导入书签」才创建，避免预创建隐藏块导致 toggleImport 走删除分支
   const list = (s && s.bookmarks) || [];
   $('#panel-count').textContent = list.length ? list.length + ' 个' : '';
+  // 批量操作工具条
+  const bar = document.createElement('div');
+  bar.className = 'bm-bulk-bar';
+  const toggle = document.createElement('button');
+  toggle.className = 'bm-bulk-btn';
+  toggle.textContent = bmSelectMode ? '取消选择' : '批量删除';
+  toggle.onclick = () => {
+    bmSelectMode = !bmSelectMode;
+    bmSelected = new Set();
+    openBookmarks();
+  };
+  bar.appendChild(toggle);
+  if (bmSelectMode && list.length) {
+    const all = document.createElement('button');
+    all.className = 'bm-bulk-btn';
+    all.textContent = bmSelected.size === list.length ? '取消全选' : '全选';
+    all.onclick = () => {
+      if (bmSelected.size === list.length) bmSelected.clear();
+      else list.forEach(b => bmSelected.add(b.url));
+      openBookmarks();
+    };
+    bar.appendChild(all);
+    const del = document.createElement('button');
+    del.className = 'bm-bulk-btn danger';
+    del.textContent = `删除选中${bmSelected.size ? ' (' + bmSelected.size + ')' : ''}`;
+    del.disabled = bmSelected.size === 0;
+    del.onclick = async () => {
+      if (!bmSelected.size) return;
+      const n = bmSelected.size;
+      if (!(await askConfirm(`确定删除选中的 ${n} 个书签吗？此操作不可撤销。`))) return;
+      try {
+        await invoke('remove_bookmarks_batch', { urls: [...bmSelected] });
+      } catch (e) {
+        // 兼容旧版：命令不存在时退回逐条删除
+        for (const url of bmSelected) {
+          try { await invoke('remove_bookmark', { url }); } catch {}
+        }
+      }
+      bmSelected = new Set();
+      bmSelectMode = false;
+      st = null;
+      openBookmarks();
+    };
+    bar.appendChild(del);
+  }
+  body.appendChild(bar);
   if (!list.length) {
     body.insertAdjacentHTML('beforeend', '<div class="empty">还没有书签。在页面按 Ctrl+D 收藏当前页。</div>');
     return;
   }
+  // 按文件夹分组：根书签在前，文件夹按名称排序
+  const groups = new Map();
   for (const b of list) {
-    const del = document.createElement('button');
-    del.className = 'del';
-    del.textContent = '✕';
-    del.onclick = async (e) => {
-      e.stopPropagation();
-      await invoke('remove_bookmark', { url: b.url });
-      st = null;
-      openBookmarks();
-    };
-    body.appendChild(row(b.title || '(无标题)', b.url, async () => {
-      try { await invoke('navigate', { input: b.url }); } catch {}
-      closeOverlay();
-    }, del));
+    const key = b.folder || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(b);
+  }
+  const keys = [...groups.keys()].sort((a, b) => {
+    if (!a) return -1;   // 根书签排最前
+    if (!b) return 1;
+    return a.localeCompare(b, 'zh-CN');
+  });
+  for (const folder of keys) {
+    const items = groups.get(folder);
+    if (folder) {
+      const head = document.createElement('div');
+      head.className = 'bm-group-head';
+      head.textContent = `📁 ${folder}（${items.length}）`;
+      body.appendChild(head);
+    }
+    for (const b of items) {
+      let extra;
+      if (bmSelectMode) {
+        // 选择模式：复选框代替删除按钮，点整行切换选中（不导航）
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'bm-check';
+        cb.checked = bmSelected.has(b.url);
+        cb.onclick = (e) => { e.stopPropagation(); toggleBmSelected(b.url); };
+        extra = cb;
+      } else {
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.textContent = '✕';
+        del.setAttribute('aria-label', '删除书签');
+        del.onclick = async (e) => {
+          e.stopPropagation();
+          if (!(await askConfirm(`确定删除书签「${b.title || b.url}」？此操作不可撤销。`))) return;
+          try {
+            await invoke('remove_bookmark', { url: b.url });
+            toast('已删除书签');
+          } catch (err) { toast('删除失败，请重试'); }
+          st = null;
+          openBookmarks();
+        };
+        extra = del;
+      }
+      const displayTitle = folder ? b.title : (b.title || '(无标题)');
+      const itemRow = row(displayTitle, b.url, async () => {
+        if (bmSelectMode) { toggleBmSelected(b.url); return; }
+        try { await invoke('navigate', { input: b.url }); }
+        catch (err) { toast('打开失败，请重试'); return; }
+        closeOverlay();
+      }, extra);
+      itemRow.dataset.bmUrl = b.url;
+      if (bmSelectMode && bmSelected.has(b.url)) itemRow.classList.add('bm-row-selected');
+      body.appendChild(itemRow);
+    }
+  }
+}
+
+// 切换单个书签选中态（只更新 DOM 与 Set，不整面板重绘，避免闪烁）
+function toggleBmSelected(url) {
+  if (bmSelected.has(url)) bmSelected.delete(url);
+  else bmSelected.add(url);
+  // 同步复选框与行高亮
+  const rows = document.querySelectorAll('#panel-body .row');
+  for (const r of rows) {
+    if (r.dataset.bmUrl === url) {
+      const cb = r.querySelector('.bm-check');
+      if (cb) cb.checked = bmSelected.has(url);
+      r.classList.toggle('bm-row-selected', bmSelected.has(url));
+    }
+  }
+  // 更新删除按钮计数
+  const delBtn = document.querySelector('#panel-body .bm-bulk-btn.danger');
+  if (delBtn) {
+    delBtn.textContent = `删除选中${bmSelected.size ? ' (' + bmSelected.size + ')' : ''}`;
+    delBtn.disabled = bmSelected.size === 0;
   }
 }
 
@@ -294,7 +538,7 @@ function renderImportBlock(body) {
       } catch (e) {
         btn.textContent = btn.dataset.src === 'chrome' ? '从 Chrome 导入书签' : '从 Edge 导入书签';
         const err = document.createElement('div');
-        err.style.cssText = 'font-size:11.5px;color:#c2410c;margin-top:6px;line-height:1.5';
+        err.style.cssText = 'font-size:11.5px;color:var(--danger, #c2410c);margin-top:6px;line-height:1.5';
         err.textContent = String(e).replace(/^.*\d:\s*/, '');
         block.appendChild(err);
       }
@@ -310,7 +554,7 @@ function renderImportBlock(body) {
       openBookmarks();
     } catch (e) {
       const err = document.createElement('div');
-      err.style.cssText = 'font-size:11.5px;color:#c2410c;margin-top:6px;line-height:1.5';
+      err.style.cssText = 'font-size:11.5px;color:var(--danger, #c2410c);margin-top:6px;line-height:1.5';
       err.textContent = String(e).replace(/^.*\d:\s*/, '');
       block.appendChild(err);
     }
@@ -337,7 +581,11 @@ async function openDownloads() {
   if (dlTimer) { clearInterval(dlTimer); dlTimer = null; }
   $('#panel-extra').classList.remove('hidden');
   $('#panel-extra').textContent = '清除已完成';
-  $('#panel-extra').onclick = async () => { await invoke('clear_downloads'); openDownloads(); };
+  $('#panel-extra').onclick = async () => {
+    try { await invoke('clear_downloads'); }
+    catch (e) { toast('清除下载记录失败，请重试'); return; }
+    openDownloads();
+  };
   const body = $('#panel-body');
   body.innerHTML = '';
   let list = [];
@@ -351,6 +599,8 @@ async function openDownloads() {
     const name = (d.path || d.url || '').split(/[\\/]/).pop() || d.url;
     const el = document.createElement('div');
     el.className = 'row';
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
     const main = document.createElement('div');
     main.className = 'dl-main';
     const line1 = document.createElement('div');
@@ -379,9 +629,10 @@ async function openDownloads() {
       meta.textContent = d.received > 0 ? '已完成 · ' + fmtBytes(d.received) : '已完成';
     } else {
       meta.className = 'meta fail';
-      meta.textContent = '失败';
+      // 显示后端给出的失败原因（兼容旧记录：没有 error 字段时显示未知错误）
+      meta.textContent = '失败 · ' + (d.error || '未知错误');
       fill.style.width = '100%';
-      fill.style.background = '#dc2626';
+      fill.style.background = 'var(--danger, #dc2626)';
     }
     line1.appendChild(t);
     line1.appendChild(meta);
@@ -389,13 +640,62 @@ async function openDownloads() {
     main.appendChild(bar);
     el.appendChild(main);
     if (d.state === 'done') {
+      // 已完成：保留原有「打开」按钮
       const extra = document.createElement('button');
       extra.className = 'reveal';
       extra.textContent = '打开';
-      extra.onclick = (e) => { e.stopPropagation(); invoke('reveal_download', { path: d.path }); };
+      extra.onclick = (e) => {
+        e.stopPropagation();
+        invoke('reveal_download', { path: d.path })
+          .catch(() => toast('打开文件失败，请检查路径'));
+      };
       el.appendChild(extra);
+    } else if (d.state === 'started') {
+      // 进行中：有任务 id 才能取消（旧记录无 id 时不显示，避免误调）
+      if (d.id) {
+        const cancel = document.createElement('button');
+        cancel.className = 'dl-act';
+        cancel.textContent = '取消';
+        cancel.onclick = async (e) => {
+          e.stopPropagation();
+          try {
+            const ok = await invoke('download_cancel', { id: d.id });
+            toast(ok ? '已取消下载' : '取消失败，请重试');
+          } catch { toast('取消失败：命令暂不可用'); }
+          openDownloads();
+        };
+        el.appendChild(cancel);
+      }
+    } else {
+      // 失败：需要登录只给引导文案（重试只会反复失败），其余类型允许重试
+      if (d.error === '需要登录') {
+        const hint = document.createElement('span');
+        hint.className = 'dl-hint';
+        hint.textContent = '请先登录站点后重试';
+        el.appendChild(hint);
+      } else {
+        const retry = document.createElement('button');
+        retry.className = 'dl-act';
+        retry.textContent = '重试';
+        retry.onclick = async (e) => {
+          e.stopPropagation();
+          try {
+            const ok = await invoke('download_retry', { url: d.url });
+            toast(ok ? '已重新开始下载' : '重试失败，请重试');
+          } catch { toast('重试失败：命令暂不可用'); }
+          openDownloads();
+        };
+        el.appendChild(retry);
+      }
     }
-    el.onclick = () => invoke('reveal_download', { path: d.path });
+    el.onclick = () => {
+      // 失败条目没有本地文件，reveal 必然失败——给反馈而不是静默吞掉
+      invoke('reveal_download', { path: d.path })
+        .catch(() => toast(d.state === 'failed' ? '下载失败，无法打开文件' : '打开文件失败，请检查路径'));
+    };
+    el.addEventListener('keydown', (ev) => {
+      if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === el) { ev.preventDefault(); el.click(); }
+    });
     body.appendChild(el);
   }
   // 有进行中的下载时每秒自动刷新（面板切走后停止）
@@ -442,12 +742,13 @@ function actions() {
   a.push(['切换主题', '', () => {
     const settings = JSON.parse(JSON.stringify(s.settings || {}));
     settings.theme = settings.theme === 'light' ? 'dark' : 'light';
-    invoke('save_settings', { settings });
+    invoke('save_settings', { settings }).catch(() => { /* 浮层即将关闭，失败静默记录到控制台即可 */ console.warn('save_settings failed'); });
   }]);
   return a;
 }
 
 async function openPalette() {
+  if (dlTimer) { clearInterval(dlTimer); dlTimer = null; }
   $('#panel').classList.add('hidden');
   $('#findbar').classList.add('hidden');
   $('#palette').classList.remove('hidden');
@@ -498,5 +799,37 @@ async function openPalette() {
   else closeOverlay();
 })();
 </script>
+
+<script>
+/* macOS 快捷键文案替换：改显示文本，不影响 JS 里的 e.ctrlKey 判断。
+   用 MutationObserver 覆盖动态渲染的菜单项。 */
+(function () {
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) return;
+  function fix(root) {
+    var walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var n;
+    while ((n = walk.nextNode())) {
+      if (n.nodeValue && (n.nodeValue.indexOf('Ctrl+') >= 0 || n.nodeValue.indexOf('Alt+') >= 0)) {
+        n.nodeValue = n.nodeValue.replace(/Ctrl\+/g, '⌘').replace(/Alt\+/g, '⌥');
+      }
+    }
+  }
+  fix(document.body);
+  try {
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) fix(node);
+          else if (node.nodeType === 3 && node.nodeValue && node.nodeValue.indexOf('Ctrl+') >= 0) {
+            node.nodeValue = node.nodeValue.replace(/Ctrl\+/g, '⌘');
+          }
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch {}
+})();
+</script>
+
 </body>
 </html>

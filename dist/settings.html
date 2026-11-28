@@ -5,20 +5,22 @@
 <title>设置 - Trawl</title>
 <style>
 :root {
-  --accent: #10b981; --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+  --accent: #10b981; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   --bg: #f5f7f9; --panel: #ffffff; --border: #e6eaee; --border-strong: #d6dde3;
-  --text: #1f2937; --text-2: #5a6672; --text-3: #98a2ae;
+  --text: #1f2937; --text-2: #5a6672; --text-3: #6b7785;
   --hover: #f1f5f7; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
-  --danger: #e0533d;
+  --danger: #ef4444;
 }
 :root[data-theme="dark"] {
   --bg: #15181c; --panel: #1e2228; --border: #2c323a; --border-strong: #3a424c;
   --text: #e8ebef; --text-2: #a9b3be; --text-3: #76818d;
   --hover: #272c33; --shadow: 0 8px 24px rgba(0,0,0,.28);
+  --danger: #f87171;
 }
-:root[data-accent="purple"] { --accent: #8b5cf6; }
-:root[data-accent="blue"]   { --accent: #3b82f6; }
-:root[data-accent="orange"] { --accent: #f59e0b; }
+:root[data-accent="purple"] { --accent: #8b5cf6; --accent-deep: #6d4ff5; }
+:root[data-accent="blue"]   { --accent: #3b82f6; --accent-deep: #2f6fe0; }
+:root[data-accent="orange"] { --accent: #f59e0b; --accent-deep: #d97706; }
+:root[data-accent="green"]  { --accent: #10b981; --accent-deep: #0b8f66; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -28,8 +30,8 @@ body {
 }
 svg { display: none; }
 .ic {
-  width: 17px; height: 17px; flex-shrink: 0; display: block;
-  stroke: currentColor; fill: none; stroke-width: 1.7;
+  width: 16px; height: 16px; flex-shrink: 0; display: block;
+  stroke: currentColor; fill: none; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round;
 }
 .app { display: flex; min-height: 100vh; }
@@ -59,7 +61,7 @@ svg { display: none; }
   width: 100%; height: 34px;
   border: 1px solid var(--border-strong); border-radius: 999px;
   background: var(--panel); color: var(--text);
-  padding: 0 14px 0 34px; font-family: inherit; font-size: 12.5px;
+  padding: 0 14px 0 34px; font-family: inherit; font-size: 12px;
   outline: none; transition: border-color .15s ease, box-shadow .15s ease;
 }
 #set-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -79,14 +81,14 @@ svg { display: none; }
 .nav::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 .nav-sep { height: 1px; background: var(--border); margin: 9px 10px; }
 .nav-group-title {
-  font-size: 10.5px; color: var(--text-3); font-weight: 600;
+  font-size: 11px; color: var(--text-3); font-weight: 600;
   letter-spacing: .4px; padding: 10px 12px 5px; white-space: nowrap;
 }
 .nav-item {
   display: flex; align-items: center; gap: 11px;
   height: 33px; padding: 0 11px;
   border-radius: 8px; color: var(--text-2);
-  cursor: pointer; font-size: 12.5px; white-space: nowrap;
+  cursor: pointer; font-size: 12px; white-space: nowrap;
   transition: background .12s ease, color .12s ease;
 }
 .nav-item:hover { background: var(--hover); color: var(--text); }
@@ -97,7 +99,7 @@ svg { display: none; }
 .nav-group-title.hidden-by-search { display: none; }
 .sidebar-foot { margin-top: 10px; padding: 8px 11px 0; font-size: 11px; color: var(--text-3); border-top: 1px solid var(--border); }
 .search-empty {
-  padding: 14px 12px; color: var(--text-3); font-size: 11.5px;
+  padding: 14px 12px; color: var(--text-3); font-size: 12px;
   display: none;
 }
 
@@ -107,7 +109,7 @@ svg { display: none; }
 .section.active { display: block; }
 .head { margin-bottom: 18px; }
 .head h1 { font-size: 21px; font-weight: 700; letter-spacing: -.2px; }
-.head p { color: var(--text-3); font-size: 12.5px; margin-top: 5px; }
+.head p { color: var(--text-3); font-size: 12px; margin-top: 5px; }
 .card {
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 12px; box-shadow: var(--shadow);
@@ -118,14 +120,14 @@ svg { display: none; }
   font-weight: 600; color: var(--text-3); letter-spacing: .4px;
 }
 .row {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 12px;
   padding: 13px 18px; border-top: 1px solid var(--border);
   min-height: 56px;
 }
 .card-title + .row, .card > .row:first-child, .row.first { border-top: none; }
 .row .info { flex: 1; min-width: 0; }
 .row .t { font-size: 13px; }
-.row .d { font-size: 11.5px; color: var(--text-3); margin-top: 3px; line-height: 1.55; }
+.row .d { font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.55; }
 .row.marked .t { color: var(--accent); font-weight: 600; }
 
 /* 开关 */
@@ -202,7 +204,7 @@ svg { display: none; }
   width: 108px; height: 76px; border-radius: 11px;
   border: 1.5px solid var(--border); background: var(--panel);
   cursor: pointer; position: relative; overflow: hidden;
-  color: var(--text-2); font-family: inherit; font-size: 11.5px;
+  color: var(--text-2); font-family: inherit; font-size: 12px;
 }
 .bg-card span.sw { position: absolute; inset: 0; }
 .bg-card span.sw.plain { background: #f7faf8; }
@@ -256,8 +258,8 @@ svg { display: none; }
 .cbd-chip:hover { border-color: var(--accent); }
 .cbd-chip.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
 .cbd-item {
-  display: flex; align-items: center; gap: 10px; padding: 11px 0;
-  border-bottom: 1px solid var(--border); font-size: 13.5px; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; padding: 11px 0;
+  border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer;
 }
 .cbd-item:last-child { border-bottom: none; }
 .cbd-item span { flex: 0 0 auto; }
@@ -271,14 +273,14 @@ svg { display: none; }
 #eng-name { width: 120px; flex-shrink: 0; }
 #eng-template { flex: 1; }
 .btn-primary, .btn-ghost {
-  height: 34px; padding: 0 14px; border-radius: 8px;
+  height: 32px; padding: 0 14px; border-radius: 8px;
   font-family: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
 }
 .btn-primary { border: none; background: var(--accent); color: #fff; }
 .btn-primary:hover { filter: brightness(1.08); }
 .btn-ghost { border: 1px solid var(--border-strong); background: transparent; color: var(--text-2); }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-.btn-ghost.armed { border-color: var(--danger); color: var(--danger); background: rgba(224,83,61,.07); }
+.btn-ghost.armed { border-color: var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, transparent); }
 select {
   height: 32px; border: 1px solid var(--border-strong); border-radius: 8px;
   background: var(--panel); color: var(--text); padding: 0 10px;
@@ -294,7 +296,7 @@ select {
 .kbd-table { padding: 2px 18px 12px; }.kbd-line {
   display: flex; align-items: center; gap: 12px;
   padding: 9px 0; border-top: 1px solid var(--border);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 .kbd-line:first-child { border-top: none; }
 .kbd-line .lbl { flex: 1; }
@@ -308,7 +310,7 @@ kbd {
 .card-title-row { display: flex; align-items: center; justify-content: space-between; padding-right: 14px; }
 .btn-link {
   border: none; background: none; color: var(--text-3);
-  font-family: inherit; font-size: 11.5px; cursor: pointer; padding: 4px 6px; border-radius: 6px;
+  font-family: inherit; font-size: 12px; cursor: pointer; padding: 4px 6px; border-radius: 6px;
 }
 .btn-link:hover { color: var(--accent); background: var(--accent-soft); }
 .btn-link.armed { color: var(--danger); background: rgba(224,83,61,.1); }
@@ -325,19 +327,19 @@ kbd {
 }
 .dl-ic .ic { width: 15px; height: 15px; }
 .dl-main { flex: 1; min-width: 0; }
-.dl-name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dl-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; }
-.dl-state { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; }
+.dl-state { font-size: 12px; color: var(--text-3); flex-shrink: 0; }
 .dl-state.ok { color: var(--accent); }
-.dl-state.bad { color: #ef4444; }
+.dl-state.bad { color: var(--danger); }
 .kv {
-  font-size: 11.5px; color: var(--text-3);
+  font-size: 12px; color: var(--text-3);
   background: var(--hover); padding: 3px 9px; border-radius: 999px; flex-shrink: 0;
 }
-.about-logo { width: 46px; height: 46px; border-radius: 13px; }
-.about-line { display: flex; align-items: center; gap: 14px; padding: 18px; }
+.about-logo { width: 46px; height: 46px; border-radius: 12px; }
+.about-line { display: flex; align-items: center; gap: 12px; padding: 18px; }
 .about-line h2 { font-size: 16px; }
-.about-line p { color: var(--text-3); font-size: 11.5px; margin-top: 5px; line-height: 1.7; }
+.about-line p { color: var(--text-3); font-size: 12px; margin-top: 5px; line-height: 1.7; }
 .badge {
   display: inline-block; padding: 2px 8px; border-radius: 999px;
   background: var(--accent-soft); color: var(--accent);
@@ -346,25 +348,25 @@ kbd {
 .tip {
   margin: 0 18px 16px; padding: 10px 12px;
   background: var(--hover); border-radius: 9px;
-  color: var(--text-3); font-size: 11.5px; line-height: 1.6;
+  color: var(--text-3); font-size: 12px; line-height: 1.6;
 }
 /* 密码管理 */
 .pw-row {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 18px; border-top: 1px solid var(--border);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 .pw-row:first-child { border-top: none; }
 .pw-row .pw-main { flex: 1; min-width: 0; }
 .pw-row .pw-site { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pw-row .pw-user { color: var(--text-3); font-size: 11.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pw-row .pw-user { color: var(--text-3); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pw-row .pw-pass {
   color: var(--text-2); font-family: ui-monospace, Consolas, monospace;
   max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pw-row button {
   border: none; background: transparent; color: var(--text-3);
-  font-family: inherit; font-size: 11.5px; cursor: pointer;
+  font-family: inherit; font-size: 12px; cursor: pointer;
   padding: 4px 8px; border-radius: 6px; flex-shrink: 0;
 }
 .pw-row button:hover { color: var(--accent); background: var(--accent-soft); }
@@ -375,7 +377,47 @@ kbd {
 .upd-status.ok { color: var(--accent); }
 .upd-status.new { color: var(--text); font-weight: 600; }
 .upd-status.err { color: var(--text-3); }
-.upd-actions { display: flex; gap: 10px; padding: 10px 18px 16px; }
+.upd-actions { display: flex; gap: 8px; padding: 10px 18px 16px; }
+
+/* 轻提示（操作成功/失败反馈） */
+#set-toast {
+  position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%) translateY(16px);
+  background: #1f2937; color: #fff; padding: 9px 18px; border-radius: 999px;
+  font-size: 12px; opacity: 0; pointer-events: none; transition: .2s ease; z-index: 1200;
+}
+#set-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 自绘确认/输入框（替代原生 confirm/prompt，避免 WebView2 假死） */
+#ask-mask {
+  position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center;
+}
+#ask-mask.hidden { display: none; }
+#ask-dialog {
+  width: min(380px, 92vw); background: var(--panel);
+  border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 18px;
+}
+#ask-title { font-size: 14px; font-weight: 600; color: var(--text); }
+#ask-msg { font-size: 12.5px; color: var(--text-2); margin-top: 7px; line-height: 1.6; white-space: pre-wrap; }
+#ask-input {
+  width: 100%; margin-top: 12px; height: 34px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); padding: 0 10px;
+  font-size: 13px; font-family: inherit; outline: none;
+}
+#ask-input:focus { border-color: var(--accent); }
+#ask-input.hidden { display: none; }
+#ask-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+#ask-btns button {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 8px; padding: 6px 15px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+}
+#ask-btns button:hover { border-color: var(--accent); color: var(--accent); }
+#ask-btns #ask-ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+#ask-btns #ask-ok:hover { filter: brightness(1.08); color: #fff; }
+/* 键盘焦点可见 */
+:focus-visible { outline: 2px solid var(--accent-deep, var(--accent)); outline-offset: 1px; }
 </style>
 </head>
 <body>
@@ -411,7 +453,7 @@ kbd {
   <aside class="sidebar">
     <nav class="nav" id="nav">
       <div class="nav-group-title">个人资料</div>
-      <div class="nav-item" data-sec="autofill" data-kw="密码 自动填充 密码管理 csv 登录"><svg class="ic"><use href="#i-autofill"/></svg>自动填充和密码</div>
+      <div class="nav-item" data-sec="autofill" data-kw="密码 自动填充 密码管理 csv 登录"><svg class="ic"><use href="#i-autofill"/></svg>本机密码管理</div>
       <div class="nav-group-title">隐私、搜索和服务</div>
       <div class="nav-item" data-sec="privacy" data-kw="隐私 安全 无痕 删除浏览数据 cookie 缓存 历史"><svg class="ic"><use href="#i-shield"/></svg>隐私与安全</div>
       <div class="nav-item" data-sec="search" data-kw="搜索引擎 默认 元宝 百度 bing google"><svg class="ic"><use href="#i-search"/></svg>搜索引擎</div>
@@ -436,13 +478,13 @@ kbd {
       <div class="nav-item" data-sec="about" data-kw="关于 版本 更新 检查升级"><svg class="ic"><use href="#i-info"/></svg>关于 Trawl</div>
       <div class="search-empty" id="nav-empty">没有匹配的设置项</div>
     </nav>
-    <div class="sidebar-foot">Trawl Browser · v0.7.18</div>
+    <div class="sidebar-foot">Trawl Browser · v0.7.23</div>
   </aside>
 
   <main class="main">
-    <!-- 自动填充和密码 -->
+    <!-- 本机密码管理 -->
     <section class="section" id="sec-autofill">
-      <div class="head"><h1>自动填充和密码</h1><p>控制地址栏补全与登录信息保存。所有数据都只存在这台电脑上。</p></div>
+      <div class="head"><h1>本机密码管理</h1><p>控制地址栏补全与登录信息保存。所有数据都只存在这台电脑上。</p></div>
       <div class="card">
         <div class="row first">
           <div class="info"><div class="t">地址栏自动补全</div><div class="d">点击地址栏时立刻给出历史与收藏建议；关闭后只有开始输入才显示。</div></div>
@@ -452,7 +494,7 @@ kbd {
       <div class="card">
         <div class="card-title">本机密码管理</div>
         <div class="row first">
-          <div class="info"><div class="t">密码管理工具</div><div class="d">按站点管理帐号密码：搜索、添加、修改、安全检查；查看详情前需要通过 Windows Hello（本机密码 / PIN / 指纹）验证。</div></div>
+          <div class="info"><div class="t">密码管理工具</div><div class="d">按站点管理帐号密码：搜索、添加、修改、安全检查；显示密码前需要通过本机身份验证（Windows Hello / macOS Touch ID）。</div></div>
           <button class="btn-ghost" id="btn-open-passwords">打开密码管理工具</button>
         </div>
         <div id="pw-list"><div class="empty-line">还没有保存密码。可从浏览器导出的 CSV 导入，或在密码管理工具里添加。</div></div>
@@ -465,8 +507,8 @@ kbd {
           <button class="btn-primary" id="pw-import-ok">导入</button>
         </div>
         <div class="row">
-          <div class="info"><div class="t">加密方式</div><div class="d">密码用 Windows DPAPI（当前用户作用域）加密后保存，仅本机当前 Windows 账户可解密，不经过任何服务器。</div></div>
-          <span class="kv">DPAPI</span>
+          <div class="info"><div class="t">加密方式</div><div class="d" id="pw-encrypt-desc">密码按当前系统平台加密后保存在本机，不经过任何服务器。</div></div>
+          <span class="kv" id="pw-encrypt-kv"></span>
         </div>
       </div>
     </section>
@@ -476,13 +518,21 @@ kbd {
       <div class="head"><h1>隐私与安全</h1><p>浏览数据的保存与清理。所有数据都只存在这台电脑上，不经过任何服务器。</p></div>
       <div class="card">
         <div class="row first">
-          <div class="info"><div class="t">无痕窗口</div><div class="d">打开一个不写入历史记录的独立窗口，适合临时查资料。</div></div>
+          <div class="info"><div class="t">无痕窗口</div><div class="d">打开一个不写入本产品历史记录的独立窗口；Cookie 与站点数据仍可能与普通窗口共享，可通过「删除浏览数据」清理。</div></div>
           <button class="btn-ghost" id="btn-incognito">打开无痕窗口</button>
         </div>
         <div class="row marked">
           <div class="info"><div class="t">删除浏览数据</div><div class="d">删除历史记录、Cookie、缓存内容及其他数据，可选择时间范围。</div></div>
           <button class="btn-primary" id="btn-clear-data">删除浏览数据…</button>
         </div>
+        <div class="row">
+          <div class="info"><div class="t">备份与恢复</div><div class="d">导出本机全部历史/书签/密码/设置/下载为 JSON 文件；导入可合并回本机（按网址去重），不覆盖其他数据。</div></div>
+          <div style="display:flex; gap:8px; flex-shrink:0">
+            <button class="btn-ghost" id="btn-export-backup">导出备份</button>
+            <button class="btn-ghost" id="btn-import-backup">导入备份</button>
+          </div>
+        </div>
+        <div class="tip" id="backup-status" style="margin-top:0; min-height:1em"></div>
         <div class="row">
           <div class="info"><div class="t">下载记录</div><div class="d">只清空列表，不会删除已经下载到硬盘的文件。</div></div>
           <button class="btn-ghost" id="btn-clear-dl-top">清空记录</button>
@@ -501,13 +551,13 @@ kbd {
           <div class="info"><div class="t">数据仅存本机</div><div class="d">书签、历史、密码、Cookie 等全部保存在这台电脑的本地目录，卸载浏览器也不会被上传。</div></div>
         </div>
         <div class="row">
-          <div class="info"><div class="t">数据独立且不用于训练</div><div class="d">你的信息不会被用于训练任何模型，也不会与第三方共享浏览记录。</div></div>
+          <div class="info"><div class="t">数据独立且不用于训练</div><div class="d">你的信息不会被用于训练任何模型，也不会与第三方共享浏览记录（界面会从站点域名请求 favicon 图标，仅域名不含浏览内容）。</div></div>
         </div>
       </div>
 
       <!-- 删除浏览数据弹窗（Edge 式） -->
       <div id="cbd-mask" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:1000;"></div>
-      <div id="cbd-dialog" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:520px; max-width:92vw; background:var(--panel); border:1px solid var(--border); border-radius:14px; box-shadow:0 18px 60px rgba(0,0,0,.28); z-index:1001; overflow:hidden;">
+      <div id="cbd-dialog" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:520px; max-width:92vw; background:var(--panel); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); z-index:1001; overflow:hidden;">
         <div style="padding:20px 24px 0; font-size:19px; font-weight:600;">删除浏览数据</div>
         <div style="padding:14px 24px 0; font-size:13px; color:var(--text-2);">立即删除</div>
         <div id="cbd-chips" style="display:flex; gap:8px; flex-wrap:wrap; padding:10px 24px 0;">
@@ -858,7 +908,7 @@ kbd {
         <div class="about-line">
           <img class="about-logo" src="logo/trawl-icon.svg" alt="">
           <div>
-            <h2>Trawl 元搜浏览器 <span class="badge" id="about-ver">v0.7.18</span></h2>
+            <h2>Trawl 元搜浏览器 <span class="badge" id="about-ver">v0.7.23</span></h2>
             <p>基于 Tauri 2 + WebView2。<br>把浏览器做薄，把搜索做快。Less browser. More search.<br>Trawl 取意「拖网」——一张网撒过所有搜索引擎，捞回全部结果再筛。</p>
           </div>
         </div>
@@ -894,9 +944,71 @@ kbd {
   </main>
 </div>
 
+<!-- 轻提示 + 自绘确认/输入框（替代原生 confirm/prompt） -->
+<div id="set-toast"></div>
+<div id="ask-mask" class="hidden">
+  <div id="ask-dialog" role="dialog" aria-modal="true" aria-labelledby="ask-title">
+    <div id="ask-title">确认</div>
+    <div id="ask-msg"></div>
+    <input id="ask-input" class="hidden" type="text" />
+    <div id="ask-btns">
+      <button id="ask-cancel" type="button">取消</button>
+      <button id="ask-ok" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let S = null;
 function report(msg) { try { window.__TAURI__.core.invoke('debug_msg', { msg }); } catch {} }
+
+/* ---- 轻提示 ---- */
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('set-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ---- 自绘确认/输入框：替代原生 confirm/prompt（P1-4） ---- */
+let askResolve = null;
+function askBox(opts) {
+  const o = Object.assign({ title: '确认', msg: '', okText: '确定', input: false, value: '' }, opts || {});
+  const mask = document.getElementById('ask-mask');
+  document.getElementById('ask-title').textContent = o.title;
+  document.getElementById('ask-msg').textContent = o.msg || '';
+  document.getElementById('ask-msg').style.display = o.msg ? '' : 'none';
+  const input = document.getElementById('ask-input');
+  input.classList.toggle('hidden', !o.input);
+  input.value = o.value || '';
+  document.getElementById('ask-ok').textContent = o.okText || '确定';
+  mask.classList.remove('hidden');
+  const done = (v) => {
+    mask.classList.add('hidden');
+    document.removeEventListener('keydown', onKey, true);
+    const r = askResolve; askResolve = null;
+    if (r) r(v);
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(o.input ? null : false); }
+    else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(o.input ? input.value : true); }
+  };
+  document.addEventListener('keydown', onKey, true);
+  document.getElementById('ask-ok').onclick = () => done(o.input ? input.value : true);
+  document.getElementById('ask-cancel').onclick = () => done(o.input ? null : false);
+  mask.onclick = (e) => { if (e.target === mask) done(o.input ? null : false); };
+  setTimeout(() => {
+    const t = o.input ? input : document.getElementById('ask-ok');
+    t.focus();
+    if (o.input) input.select();
+  }, 0);
+  return new Promise((resolve) => { askResolve = resolve; });
+}
+const confirmBox = (msg, title, okText) => askBox({ title: title || '确认', msg, okText: okText || '确定' });
+const promptBox = (title, value, msg) => askBox({ title, msg: msg || '', input: true, value: value || '', okText: '确定' });
 
 /* 默认值：老配置文件里没有的字段补齐，避免保存时被后端默认值覆盖 */
 const DEFAULTS = {
@@ -948,6 +1060,14 @@ function paintChoice() {
 }
 
 async function load() {
+  // 关于页版本号从后端取，避免硬编码过期
+  try {
+    const v = await window.__TAURI__.core.invoke('get_version');
+    const verEl = document.getElementById('about-ver');
+    if (verEl && v) verEl.textContent = v.startsWith('v') ? v : ('v' + v);
+    const foot = document.querySelector('.sidebar-foot');
+    if (foot && v) foot.textContent = 'Trawl Browser · ' + (v.startsWith('v') ? v : ('v' + v));
+  } catch {}
   let boot = null;
   try { boot = await window.__TAURI__.core.invoke('initial_state'); } catch (e) { report('initial_state error: ' + e); }
   if (boot && boot.settings) S = boot.settings;
@@ -985,10 +1105,12 @@ async function load() {
   renderPwList();
 }
 
-function persist() {
+async function persist() {
   try { localStorage.setItem('trawl-settings', JSON.stringify(S)); } catch {}
   try { localStorage.setItem('trawl-theme', resolvedTheme()); localStorage.setItem('trawl-accent', S.accent || 'green'); } catch {}
-  try { window.__TAURI__.core.invoke('save_settings', { settings: S }); } catch (e) { report('save_settings error: ' + e); }
+  // invoke 返回 Promise：IPC 失败是异步 reject，同步 catch 捕获不到（M9 修复）
+  try { await window.__TAURI__.core.invoke('save_settings', { settings: S }); }
+  catch (e) { report('save_settings error: ' + e); }
 }
 
 /* ---------- AI 引擎下拉 ---------- */
@@ -1040,10 +1162,11 @@ function renderEngines() {
     const del = document.createElement('button');
     del.className = 'eng-del'; del.textContent = '✕'; del.title = '删除引擎';
     del.onclick = () => {
-      if (S.engines.length <= 1) return;
+      if (S.engines.length <= 1) { toast('至少保留一个搜索引擎'); return; }
       S.engines = S.engines.filter(x => x !== eng);
       if (S.defaultEngine === eng.name) S.defaultEngine = S.engines[0]?.name || '';
       persist(); renderEngines(); fillAiEngine();
+      toast('已删除「' + eng.name + '」');
     };
     row.appendChild(radio); row.appendChild(icon); row.appendChild(name); row.appendChild(url); row.appendChild(del);
     list.appendChild(row);
@@ -1071,7 +1194,8 @@ const KB_PAGE = [
   ['实际大小', ['Ctrl', '0']],
   ['刷新页面', ['Ctrl', 'R']],
   ['命令面板', ['Ctrl', 'K']],
-  ['标签列表', ['Ctrl', 'Shift', 'T']],
+  ['恢复上次关闭的标签', ['Ctrl', 'Shift', 'T']],
+  ['标签列表', ['Ctrl', 'Shift', 'L']],
   ['关闭浮层 / 退出分屏', ['Esc']],
 ];
 function renderShortcuts() {
@@ -1200,9 +1324,11 @@ on('set-shortcuts', (e) => { S.showShortcuts = e.target.checked; persist(); });
 on('set-autocomplete', (e) => { S.autocomplete = e.target.checked; persist(); });
 on('set-motion', (e) => { S.reduceMotion = e.target.checked; persist(); });
 on('set-contrast', (e) => { S.highContrast = e.target.checked; persist(); });
-on('set-autostart', (e) => {
+on('set-autostart', async (e) => {
   S.autostart = e.target.checked;
-  try { window.__TAURI__.core.invoke('set_autostart', { enable: S.autostart }); } catch {}
+  persist();  // 持久化开关状态（之前漏掉，重启后 UI 回退）
+  try { await window.__TAURI__.core.invoke('set_autostart', { enable: S.autostart }); }
+  catch (err) { report('set_autostart error: ' + String(err)); }
 });
 on('set-homepage', (e) => {
   const v = e.target.value.trim() || 'trawl://newtab';
@@ -1224,7 +1350,24 @@ on('set-translate-lang', async (e) => {
   } catch {}
 });
 
-const inv = (cmd, args) => { try { window.__TAURI__.core.invoke(cmd, args); } catch {} };
+// invoke 返回 Promise：同步 try/catch 抓不到异步 reject，必须 .catch 收口（否则 IPC 失败静默）
+const inv = (cmd, args) => window.__TAURI__.core.invoke(cmd, args).catch((e) => { report('IPC ' + cmd + ' error: ' + e); toast('操作失败：' + cmd); });
+
+// 加密方式按平台显示，避免把 Windows 实现写成所有平台的承诺（与密码工具页口径一致）
+(function () {
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const desc = document.getElementById('pw-encrypt-desc');
+  const kv = document.getElementById('pw-encrypt-kv');
+  if (!desc) return;
+  if (isMac) {
+    desc.textContent = '密码用 macOS 钥匙串（当前用户作用域）保存，显示前可通过 Touch ID / 登录密码验证，不经过任何服务器。';
+    if (kv) kv.textContent = '钥匙串';
+  } else {
+    desc.textContent = '密码用 Windows DPAPI（当前用户作用域）加密后保存，仅本机当前 Windows 账户可解密，不经过任何服务器。';
+    if (kv) kv.textContent = 'DPAPI';
+  }
+})();
+
 document.getElementById('btn-open-dl').onclick = () => inv('open_download_dir');
 document.getElementById('btn-open-dl2').onclick = () => inv('open_download_dir');
 document.getElementById('btn-open-data').onclick = () => inv('open_data_dir');
@@ -1259,6 +1402,72 @@ const cbdOpen = () => {
 };
 const cbdClose = () => { cbdMask.style.display = 'none'; cbdDialog.style.display = 'none'; };
 document.getElementById('btn-clear-data').onclick = cbdOpen;
+
+// ---- 备份与恢复（export_backup / import_backup） ----
+const backupStatus = document.getElementById('backup-status');
+let backupTimer = null;
+function backupNotice(msg) {
+  if (!backupStatus) return;
+  backupStatus.textContent = msg || '';
+  clearTimeout(backupTimer);
+  backupTimer = setTimeout(() => { if (backupStatus) backupStatus.textContent = ''; }, 6000);
+}
+document.getElementById('btn-export-backup').onclick = async () => {
+  const btn = document.getElementById('btn-export-backup');
+  btn.disabled = true;
+  try {
+    const path = await window.__TAURI__.core.invoke('export_backup');
+    if (!path) { backupNotice('导出失败'); return; }
+    // 只显示文件名，完整路径太长会撑破这一行
+    const name = String(path).split(/[\\/]/).pop() || String(path);
+    backupNotice('已导出到下载目录：' + name);
+  } catch (e) {
+    report('export_backup error: ' + e);
+    backupNotice('导出失败');
+  } finally {
+    btn.disabled = false;
+  }
+};
+document.getElementById('btn-import-backup').onclick = async () => {
+  if (!(await confirmBox('导入会按网址合并备份数据到本机，不会覆盖其他数据。确定继续吗？', '导入备份'))) return;
+  let path = '';
+  try {
+    const dlg = window.__TAURI__ && window.__TAURI__.dialog;
+    if (dlg && typeof dlg.open === 'function') {
+      const picked = await dlg.open({
+        multiple: false,
+        filters: [{ name: 'Trawl 备份文件', extensions: ['json'] }],
+      });
+      if (!picked) { backupNotice('未选择文件'); return; }
+      path = Array.isArray(picked) ? picked[0] : picked;
+    } else {
+      // dialog 插件不可用时退化为手输路径（自绘输入框，不引入外部依赖、不阻塞 WebView2）
+      const input = await promptBox('导入备份', '', '请输入备份文件的完整路径（.json）：');
+      if (input === null) return;
+      path = String(input).trim();
+    }
+  } catch (e) {
+    report('dialog.open error: ' + e);
+    backupNotice('未选择文件');
+    return;
+  }
+  if (!path) { backupNotice('未选择文件'); return; }
+  const btn = document.getElementById('btn-import-backup');
+  btn.disabled = true;
+  try {
+    const ok = await window.__TAURI__.core.invoke('import_backup', { path });
+    if (!ok) { backupNotice('导入失败：文件格式不正确或版本不支持'); return; }
+    backupNotice('导入成功');
+    // 导入会改历史/书签/密码/设置/下载，重新拉取本机状态并刷新页面上的列表
+    try { await load(); } catch (e) { report('导入后 load error: ' + e); }
+    try { await renderDownloads(); } catch (e) { report('导入后 renderDownloads error: ' + e); }
+  } catch (e) {
+    report('import_backup error: ' + e);
+    backupNotice('导入失败：文件格式不正确或版本不支持');
+  } finally {
+    btn.disabled = false;
+  }
+};
 document.getElementById('cbd-cancel').onclick = cbdClose;
 cbdMask.onclick = cbdClose;
 document.querySelectorAll('.cbd-chip').forEach(c => {
@@ -1313,7 +1522,8 @@ armButton(document.getElementById('btn-reset'), '重置设置', async () => {
 document.getElementById('eng-add').onclick = () => {
   const name = document.getElementById('eng-name').value.trim();
   let template = document.getElementById('eng-template').value.trim();
-  if (!name || !template) return;
+  if (!name || !template) { toast('请填写引擎名称和搜索地址'); return; }
+  if (S.engines.some(e => e.name === name)) { toast('已存在同名引擎，请换一个名称'); return; }
   if (!template.includes('{query}') && !template.includes('%s')) {
     template += (template.endsWith('?') ? '{query}' : '/{query}');
   }
@@ -1321,6 +1531,7 @@ document.getElementById('eng-add').onclick = () => {
   document.getElementById('eng-name').value = '';
   document.getElementById('eng-template').value = '';
   persist(); renderEngines(); fillAiEngine();
+  toast('已添加搜索引擎');
 };
 
 /* ---------- 更新检查（Edge 式「关于」卡片） ---------- */
@@ -1367,10 +1578,12 @@ document.getElementById('upd-later').onclick = () => {
 async function renderPwList() {
   const box = document.getElementById('pw-list');
   if (!box) return;
-  let list = [];
-  try { list = await window.__TAURI__.core.invoke('pw_list'); } catch { list = []; }
+  let list = [], failed = false;
+  try { list = await window.__TAURI__.core.invoke('pw_list'); } catch { list = []; failed = true; }
   if (!list || !list.length) {
-    box.innerHTML = '<div class="empty-line">还没有保存密码。可从浏览器导出的 CSV 导入，或在密码管理工具里添加。</div>';
+    box.innerHTML = failed
+      ? '<div class="empty-line">密码数据加载失败，请打开密码管理工具排查。</div>'
+      : '<div class="empty-line">还没有保存密码。可从浏览器导出的 CSV 导入，或在密码管理工具里添加。</div>';
     return;
   }
   box.innerHTML = '';
@@ -1385,14 +1598,60 @@ async function renderPwList() {
     row.querySelector('.pw-site').textContent = it.site || '(未命名站点)';
     row.querySelector('.pw-user').textContent = it.username || '';
     const passEl = row.querySelector('.pw-pass');
+    const showBtn = row.querySelector('.pw-show');
     let shown = false;
-    row.querySelector('.pw-show').onclick = () => {
-      shown = !shown;
-      passEl.textContent = shown ? (it.password || '') : '••••••••';
-      row.querySelector('.pw-show').textContent = shown ? '隐藏' : '显示';
+    // 与独立密码工具一致：显示明文前必须通过本机身份验证
+    // （Windows Hello / macOS Touch ID·登录密码），避免绕过验证直接看密码
+    showBtn.onclick = async () => {
+      if (shown) {
+        shown = false;
+        passEl.textContent = '••••••••';
+        showBtn.textContent = '显示';
+        return;
+      }
+      showBtn.disabled = true;
+      showBtn.textContent = '验证中…';
+      let ok = false;
+      try {
+        const r = await window.__TAURI__.core.invoke('verify_user_consent');
+        ok = r === 'verified';
+        if (r === 'not_available') {
+          ok = await confirmBox(
+            '本机未启用身份验证，无法安全显示密码。\n建议到「设置 → 本机密码管理」配置本机验证。\n\n仍要显示吗？',
+            '需要确认', '仍要显示');
+          if (ok) await window.__TAURI__.core.invoke('pw_confirm_insecure').catch(() => {});
+        }
+      } catch { ok = false; }
+      showBtn.disabled = false;
+      if (!ok) {
+        showBtn.textContent = '验证未通过';
+        report('身份验证未通过，未显示密码');
+        setTimeout(() => { showBtn.textContent = '显示'; }, 1800);
+        return;
+      }
+      // 验证通过后按需取明文（后端校验验证时间戳，列表本身不含密码）
+      let plain;
+      try { plain = await window.__TAURI__.core.invoke('pw_reveal', { id: it.id }); }
+      catch (err) {
+        showBtn.textContent = '读取失败';
+        report('pw_reveal 失败: ' + String(err));
+        setTimeout(() => { showBtn.textContent = '显示'; }, 1800);
+        return;
+      }
+      shown = true;
+      passEl.textContent = plain || '';
+      showBtn.textContent = '隐藏';
     };
     row.querySelector('.pw-del').onclick = async () => {
-      try { await window.__TAURI__.core.invoke('pw_del', { id: it.id }); } catch {}
+      // 删除密码是破坏性操作：二次确认 + 成功/失败反馈（P1-7）
+      if (!(await confirmBox('确定删除这条密码？此操作不可撤销。', '删除密码', '删除'))) return;
+      try {
+        await window.__TAURI__.core.invoke('pw_del', { id: it.id });
+        toast('已删除密码');
+      } catch (e) {
+        report('pw_del error: ' + e);
+        toast('删除失败，请重试');
+      }
       renderPwList();
     };
     box.appendChild(row);
@@ -1428,7 +1687,15 @@ if (pwImportBtn) {
 }
 
 function activate(sec) {
-  const item = document.querySelector('.nav-item[data-sec="' + sec + '"]');
+  // hash 可被 URL 直接控制，不能拼进 CSS 选择器（含引号/反斜杠会语法错误甚至被注入）；
+  // 用 CSS.escape 转义属性值，找不到时再走遍历比对兜底。
+  let item = null;
+  try {
+    item = document.querySelector('.nav-item[data-sec="' + CSS.escape(String(sec)) + '"]');
+  } catch (_) { item = null; }
+  if (!item) {
+    item = [...document.querySelectorAll('.nav-item')].find(i => i.dataset.sec === sec) || null;
+  }
   const sec2 = document.getElementById('sec-' + sec);
   if (!item || !sec2) return false;
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -1503,6 +1770,37 @@ searchInput.addEventListener('keydown', (e) => {
 });
 
 load();
+</script>
+
+<script>
+/* macOS 快捷键文案替换：改显示文本，不影响 JS 里的 e.ctrlKey 判断。
+   用 MutationObserver 覆盖动态渲染的菜单项。 */
+(function () {
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) return;
+  function fix(root) {
+    var walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var n;
+    while ((n = walk.nextNode())) {
+      if (n.nodeValue && (n.nodeValue.indexOf('Ctrl+') >= 0 || n.nodeValue.indexOf('Alt+') >= 0)) {
+        n.nodeValue = n.nodeValue.replace(/Ctrl\+/g, '⌘').replace(/Alt\+/g, '⌥');
+      }
+    }
+  }
+  fix(document.body);
+  try {
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) fix(node);
+          else if (node.nodeType === 3 && node.nodeValue && node.nodeValue.indexOf('Ctrl+') >= 0) {
+            node.nodeValue = node.nodeValue.replace(/Ctrl\+/g, '⌘');
+          }
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch {}
+})();
 </script>
 
 </body>

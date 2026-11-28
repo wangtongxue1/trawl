@@ -77,26 +77,38 @@ jobs:
         run: npm install
 
       # 仅当 Secrets 真的配置了证书才注入（空字符串也会让 tauri 误去导入 p12 而失败）
+      # 用步骤级 env 传值，避免 ${{ }} 直接进 shell 源码被解释（M13 注入风险）
       - name: Prepare signing env (only if configured)
         shell: bash
+        env:
+          APPLE_CERTIFICATE_IN: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERT_PASSWORD_IN: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY_IN: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID_IN: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD_IN: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID_IN: ${{ secrets.APPLE_TEAM_ID }}
+          AZURE_CLIENT_ID_IN: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET_IN: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID_IN: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID_IN: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
-          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+          if [ -n "$APPLE_CERTIFICATE_IN" ]; then
             {
-              echo "APPLE_CERTIFICATE=${{ secrets.APPLE_CERTIFICATE }}"
-              echo "APPLE_CERTIFICATE_PASSWORD=${{ secrets.APPLE_CERTIFICATE_PASSWORD }}"
-              echo "APPLE_SIGNING_IDENTITY=${{ secrets.APPLE_SIGNING_IDENTITY }}"
-              echo "APPLE_ID=${{ secrets.APPLE_ID }}"
-              echo "APPLE_PASSWORD=${{ secrets.APPLE_PASSWORD }}"
-              echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}"
+              printf 'APPLE_CERTIFICATE=%s\n' "$APPLE_CERTIFICATE_IN"
+              printf 'APPLE_CERTIFICATE_PASSWORD=%s\n' "$APPLE_CERT_PASSWORD_IN"
+              printf 'APPLE_SIGNING_IDENTITY=%s\n' "$APPLE_SIGNING_IDENTITY_IN"
+              printf 'APPLE_ID=%s\n' "$APPLE_ID_IN"
+              printf 'APPLE_PASSWORD=%s\n' "$APPLE_PASSWORD_IN"
+              printf 'APPLE_TEAM_ID=%s\n' "$APPLE_TEAM_ID_IN"
             } >> "$GITHUB_ENV"
             echo "macOS signing enabled"
           fi
-          if [ -n "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+          if [ -n "$AZURE_CLIENT_ID_IN" ]; then
             {
-              echo "AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}"
-              echo "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}"
-              echo "AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}"
-              echo "AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+              printf 'AZURE_CLIENT_ID=%s\n' "$AZURE_CLIENT_ID_IN"
+              printf 'AZURE_CLIENT_SECRET=%s\n' "$AZURE_CLIENT_SECRET_IN"
+              printf 'AZURE_TENANT_ID=%s\n' "$AZURE_TENANT_ID_IN"
+              printf 'AZURE_SUBSCRIPTION_ID=%s\n' "$AZURE_SUBSCRIPTION_ID_IN"
             } >> "$GITHUB_ENV"
             echo "Windows Azure signing enabled"
           fi
@@ -148,7 +160,16 @@ jobs:
       - name: Ensure draft release
         shell: bash
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CFG_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$CFG_VERSION" ]; then
+              echo "::error::tag $GITHUB_REF_NAME 与配置版本 $CFG_VERSION 不一致，拒绝构建"
+              exit 1
+            fi
+          else
+            VERSION="$CFG_VERSION"
+          fi
           gh release view "v$VERSION" >/dev/null 2>&1 || \
             gh release create "v$VERSION" --draft \
               --title "Trawl 元搜浏览器 v$VERSION" \
@@ -159,14 +180,23 @@ jobs:
       - name: Upload desktop artifacts
         shell: bash
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CFG_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$CFG_VERSION" ]; then
+              echo "::error::tag $GITHUB_REF_NAME 与配置版本 $CFG_VERSION 不一致，拒绝构建"
+              exit 1
+            fi
+          else
+            VERSION="$CFG_VERSION"
+          fi
           B="${{ steps.bundle.outputs.dir }}"
           if [ "${{ matrix.settings.platform }}" = "windows-latest" ]; then
             FILES=( "$B/msi/"*.msi "$B/nsis/"*.exe Trawl-*-windows-x64-portable.zip )
           else
             FILES=( "$B/dmg/"*.dmg )
           fi
-          gh release upload "v$VERSION" "${FILES[@]}" --clobber
+          gh release upload "v$VERSION" "${FILES[@]}"
 
   # ============ Android：APK（arm64） ============
   # 单 webview 移动端架构（lib.rs mobile 模块 + dist/mobile.html），v0.7.16 起恢复。
@@ -265,7 +295,16 @@ jobs:
 
       - name: Ensure draft release
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CFG_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$CFG_VERSION" ]; then
+              echo "::error::tag $GITHUB_REF_NAME 与配置版本 $CFG_VERSION 不一致，拒绝构建"
+              exit 1
+            fi
+          else
+            VERSION="$CFG_VERSION"
+          fi
           gh release view "v$VERSION" >/dev/null 2>&1 || \
             gh release create "v$VERSION" --draft \
               --title "Trawl 元搜浏览器 v$VERSION" \
@@ -274,8 +313,17 @@ jobs:
 
       - name: Upload APK to release
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          gh release upload "v$VERSION" apks/*.apk --clobber
+          CFG_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$CFG_VERSION" ]; then
+              echo "::error::tag $GITHUB_REF_NAME 与配置版本 $CFG_VERSION 不一致，拒绝构建"
+              exit 1
+            fi
+          else
+            VERSION="$CFG_VERSION"
+          fi
+          gh release upload "v$VERSION" apks/*.apk
 
   # ============ iOS（可选：仅在手动触发且勾选时运行，需签名 secrets） ============
   # ⚠️ 暂时禁用：与 Android 相同原因，移动端 UI 重构后再启用
@@ -344,7 +392,16 @@ jobs:
 
       - name: Ensure draft release
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CFG_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$CFG_VERSION" ]; then
+              echo "::error::tag $GITHUB_REF_NAME 与配置版本 $CFG_VERSION 不一致，拒绝构建"
+              exit 1
+            fi
+          else
+            VERSION="$CFG_VERSION"
+          fi
           gh release view "v$VERSION" >/dev/null 2>&1 || \
             gh release create "v$VERSION" --draft \
               --title "Trawl 元搜浏览器 v$VERSION" \
@@ -353,5 +410,14 @@ jobs:
 
       - name: Upload IPA to release
         run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          gh release upload "v$VERSION" ./*.ipa --clobber
+          CFG_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$CFG_VERSION" ]; then
+              echo "::error::tag $GITHUB_REF_NAME 与配置版本 $CFG_VERSION 不一致，拒绝构建"
+              exit 1
+            fi
+          else
+            VERSION="$CFG_VERSION"
+          fi
+          gh release upload "v$VERSION" ./*.ipa

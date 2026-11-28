@@ -7,26 +7,43 @@
 :root {
   --accent: #10b981; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   --panel: #ffffff; --hover: rgba(17,24,39,.055); --divider: rgba(17,24,39,.08);
-  --text: #1f2329; --text-dim: #7b8794;
+  --border: rgba(17,24,39,.10);
+  --text: #1f2329; --text-dim: #6b7785; --danger: #ef4444;
+  --shadow-sm: 0 1px 3px rgba(16,24,40,.10);
+  --shadow-md: 0 6px 20px rgba(16,24,40,.12);
 }
+/* 深色主题：浮层跟随 chrome 主题（由脚本读取 get_settings 设置 data-theme） */
+:root[data-theme="dark"] {
+  --panel: #262a31; --bg: #1d2025; --hover: rgba(255,255,255,.08);
+  --divider: rgba(255,255,255,.09); --border: rgba(255,255,255,.12);
+  --text: #e6e8eb; --text-dim: #98a2b3; --danger: #f87171;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+}
+/* 强调色四套（与 style.css 保持一致；浮层独立 webview 需自带规则） */
+:root[data-accent="purple"] { --accent: #8b5cf6; --accent-deep: #6d4ff5; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent); }
+:root[data-accent="blue"]   { --accent: #3b82f6; --accent-deep: #2f6fe0; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent); }
+:root[data-accent="orange"] { --accent: #f59e0b; --accent-deep: #d97706; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent); }
+:root[data-accent="green"]  { --accent: #10b981; --accent-deep: #0b8f66; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent); }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   background: transparent; overflow: hidden; height: 100%;
   font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-  color: var(--text); user-select: none; font-size: 12.5px;
+  color: var(--text); user-select: none; font-size: 12px;
 }
 svg { display: none; }
 .ic {
   width: 16px; height: 16px; display: block; flex-shrink: 0;
-  stroke: currentColor; fill: none; stroke-width: 1.7;
+  stroke: currentColor; fill: none; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round;
 }
 .card {
   background: var(--panel);
-  border: 1px solid rgba(17,24,39,.10);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 5px;
-  box-shadow: 0 14px 38px rgba(16,24,40,.20);
+  box-shadow: var(--shadow-md);
   max-height: calc(100vh - 12px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -47,7 +64,7 @@ svg { display: none; }
 .item:hover .ic, .item.on .ic { color: var(--accent); }
 .item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .item .k {
-  color: var(--text-dim); font-size: 10.5px; letter-spacing: .2px;
+  color: var(--text-dim); font-size: 11px; letter-spacing: .2px;
 }
 .item.on .k { color: var(--accent); }
 /* 缩放行（Edge 式：内联 − / 数值 / + / 全屏） */
@@ -74,10 +91,34 @@ svg { display: none; }
 .toast {
   position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
   background: rgba(20,26,33,.9); color: #fff;
-  font-size: 11.5px; padding: 6px 14px; border-radius: 999px;
+  font-size: 12px; padding: 6px 14px; border-radius: 999px;
   opacity: 0; transition: opacity .16s ease; pointer-events: none;
 }
 .toast.show { opacity: 1; }
+
+/* 自绘确认框（替代原生 confirm，避免 WebView2 假死） */
+#cf-mask {
+  position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center;
+}
+#cf-mask.hidden { display: none; }
+#cf-dialog {
+  width: min(300px, 90vw); background: var(--panel);
+  border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-md); padding: 16px;
+}
+#cf-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+#cf-msg { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.6; white-space: pre-wrap; }
+#cf-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+#cf-btns button {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+#cf-btns button:hover { border-color: var(--accent); color: var(--accent-deep, var(--accent)); }
+#cf-btns #cf-ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+#cf-btns #cf-ok:hover { background: var(--accent-deep, var(--accent)); color: #fff; }
+/* 键盘焦点可见 */
+:focus-visible { outline: 2px solid var(--accent-deep, var(--accent)); outline-offset: 1px; }
 </style>
 </head>
 <body>
@@ -115,7 +156,28 @@ svg { display: none; }
 
 <div class="card" id="card"></div>
 <div class="toast" id="toast">已复制</div>
+<div id="cf-mask" class="hidden">
+  <div id="cf-dialog" role="dialog" aria-modal="true" aria-labelledby="cf-title">
+    <div id="cf-title">确认</div>
+    <div id="cf-msg"></div>
+    <div id="cf-btns">
+      <button id="cf-cancel" type="button">取消</button>
+      <button id="cf-ok" type="button">确定</button>
+    </div>
+  </div>
+</div>
 <script>
+// 跟随 chrome 主题（浮层独立 webview，需自行读取设置）
+try {
+  const tc = window.__TAURI__ && window.__TAURI__.core;
+  tc.invoke('get_settings').then(s => {
+    if (s && (s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+    document.documentElement.dataset.accent = (s && s.accent) || 'green';
+  }).catch(() => {});
+} catch {}
+
 // 降级兜底：非 tauri 环境（预览/测试）也能渲染菜单结构，不会白屏
 const __tauri = window.__TAURI__ || {};
 const { invoke = () => Promise.reject(new Error('no tauri')) } = __tauri.core || {};
@@ -130,8 +192,35 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 900);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
+
+/* 自绘确认框（替代原生 confirm，返回 Promise<boolean>） */
+let cfResolve = null;
+function cfDone(v) {
+  document.getElementById('cf-mask').classList.add('hidden');
+  document.removeEventListener('keydown', cfKey, true);
+  const r = cfResolve; cfResolve = null;
+  if (r) r(v);
+}
+function cfKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cfDone(false); }
+  else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); cfDone(true); }
+}
+function confirmBox(title, msg, okText) {
+  return new Promise((resolve) => {
+    document.getElementById('cf-title').textContent = title || '确认';
+    document.getElementById('cf-msg').textContent = msg || '';
+    document.getElementById('cf-ok').textContent = okText || '确定';
+    document.getElementById('cf-mask').classList.remove('hidden');
+    document.addEventListener('keydown', cfKey, true);
+    cfResolve = resolve;
+    document.getElementById('cf-ok').focus();
+  });
+}
+document.getElementById('cf-ok').onclick = () => cfDone(true);
+document.getElementById('cf-cancel').onclick = () => cfDone(false);
+document.getElementById('cf-mask').onclick = (e) => { if (e.target === document.getElementById('cf-mask')) cfDone(false); };
 
 async function copyText(text) {
   try {
@@ -194,8 +283,18 @@ async function build() {
 
   const items = [
     { label: '新建标签页', key: 'Ctrl+T', icon: 'i-plus', fn: () => runLocal('new_tab') },
+    { label: '恢复上次关闭的标签', key: 'Ctrl+Shift+T', icon: 'i-clock', fn: async () => {
+        try {
+          const url = await invoke('reopen_tab');
+          if (!url) { toast('没有可恢复的标签'); setTimeout(close, 800); return; }
+          await invoke('new_tab');
+          await invoke('navigate', { input: url });
+        } catch { toast('恢复失败'); setTimeout(close, 800); return; }
+        close();
+      } },
+    { label: '标签列表', key: 'Ctrl+Shift+L', icon: 'i-side', fn: () => runLocal('open_tablist') },
     { label: '新建窗口', key: 'Ctrl+N', icon: 'i-window', fn: () => runLocal('open_standalone_window', { incognito: false }) },
-    { label: '新建无痕窗口', key: 'Ctrl+Shift+N', icon: 'i-incognito', fn: () => runLocal('open_standalone_window', { incognito: true }) },
+    { label: '新建无痕窗口', icon: 'i-incognito', fn: () => runLocal('open_standalone_window', { incognito: true }) },
     { sep: true },
     { zoom: true, pct: zoomPct },
     { sep: true },
@@ -246,16 +345,31 @@ async function build() {
       } },
     { label: '屏幕截图', icon: 'i-cam',
       fn: async () => {
+        // 先关浮层再截图（避免菜单入镜）；反馈改为发给 chrome 的 ext-toast，
+        // 本浮层关闭后自己画的 toast 用户看不到（P2-U6）
         close();
         setTimeout(async () => {
-          try { await invoke('capture_screen'); toast('截图已保存到图片\\Trawl截图'); } catch { toast('截图失败'); }
+          try {
+            await invoke('capture_screen');
+            try { window.__TAURI__.event.emit('ext-toast', '截图已保存到图片\\Trawl截图'); } catch {}
+          } catch {
+            try { window.__TAURI__.event.emit('ext-toast', '截图失败'); } catch {}
+          }
         }, 240);
       } },
     { label: '打印…', key: 'Ctrl+P', icon: 'i-print', off: !active, fn: () => runLocal('print_page') },
     { sep: true },
     { label: '复制标签页', icon: 'i-dup', off: noActive, fn: () => active && runLocal('duplicate_tab', { id: active.id }) },
     { label: active && active.pinned ? '取消固定标签页' : '固定标签页', icon: 'i-pin', off: noActive, fn: () => active && runLocal('toggle_pin', { id: active.id }) },
-    { label: '关闭其他标签页', icon: 'i-closeothers', off: noActive || tabs.length < 2, fn: () => active && runLocal('close_other_tabs', { id: active.id }) },
+    { label: '关闭其他标签页', icon: 'i-closeothers', off: noActive || tabs.length < 2,
+      fn: async () => {
+        if (!active) return;
+        const ok = await confirmBox('关闭其他标签页？', `除「${active.title || '当前标签'}」外的 ${tabs.length - 1} 个标签页都会被关闭。`, '关闭');
+        if (!ok) return;
+        try { await invoke('close_other_tabs', { id: active.id }); }
+        catch { toast('关闭失败，请重试'); setTimeout(close, 800); return; }
+        close();
+      } },
     { label: vertical ? '切换为水平标签栏' : '切换为垂直标签栏', icon: 'i-side', fn: () => runLocal('toggle_vertical_tabs') },
     { label: '命令面板', key: 'Ctrl+K', icon: 'i-command', fn: () => runOverlay('ui_action', { what: 'palette' }) },
     { sep: true },
@@ -300,10 +414,21 @@ async function build() {
     }
     const el = document.createElement('div');
     el.className = 'item' + (it.on ? ' on' : '') + (it.off ? ' off' : '');
+    el.setAttribute('role', 'menuitem');
+    el.tabIndex = it.off ? -1 : 0;
     el.innerHTML = '<svg class="ic"><use href="#' + it.icon + '"/></svg><span class="t"></span><span class="k"></span>';
     el.querySelector('.t').textContent = it.label;
     el.querySelector('.k').textContent = it.key || '';
     el.onclick = it.fn;
+    el.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && !it.off) { e.preventDefault(); el.click(); }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const items = [...card.querySelectorAll('.item:not(.off)')];
+        const i = items.indexOf(el);
+        const next = items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
+        if (next) { e.preventDefault(); next.focus(); }
+      }
+    });
     card.appendChild(el);
   }
 
@@ -317,11 +442,48 @@ async function build() {
   });
 }
 
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  // 确认框打开时 Esc 只关对话框
+  if (!document.getElementById('cf-mask').classList.contains('hidden')) return;
+  close();
+});
 build();
 if (window.__TAURI__.event) {
   window.__TAURI__.event.listen('warm-shown', () => setTimeout(build, 90));
 }
 </script>
+
+<script>
+/* macOS 快捷键文案替换：改显示文本，不影响 JS 里的 e.ctrlKey 判断。
+   用 MutationObserver 覆盖动态渲染的菜单项。 */
+(function () {
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!isMac) return;
+  function fix(root) {
+    var walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var n;
+    while ((n = walk.nextNode())) {
+      if (n.nodeValue && (n.nodeValue.indexOf('Ctrl+') >= 0 || n.nodeValue.indexOf('Alt+') >= 0)) {
+        n.nodeValue = n.nodeValue.replace(/Ctrl\+/g, '⌘').replace(/Alt\+/g, '⌥');
+      }
+    }
+  }
+  fix(document.body);
+  try {
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) fix(node);
+          else if (node.nodeType === 3 && node.nodeValue && node.nodeValue.indexOf('Ctrl+') >= 0) {
+            node.nodeValue = node.nodeValue.replace(/Ctrl\+/g, '⌘');
+          }
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch {}
+})();
+</script>
+
 </body>
 </html>

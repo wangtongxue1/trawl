@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "remote-injected",
+  "description": "注入到远程网页的脚本所需最小权限：页面点击上报、页内翻译。只放行这两条命令给 http(s) 远程标签页，不授予本地能力。",
+  "remote": {
+    "urls": [
+      "https://*",
+      "http://*"
+    ]
+  },
+  "local": false,
+  "windows": [
+    "main"
+  ],
+  "webviews": [
+    "tab-*"
+  ],
+  "platforms": [
+    "macOS",
+    "windows",
+    "linux"
+  ],
+  "permissions": [
+    "allow-page-pressed",
+    "allow-translate-text"
+  ]
+}

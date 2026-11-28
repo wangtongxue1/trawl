@@ -267,6 +267,12 @@
           "markdownDescription": "Enables the close_workspace command without any pre-configured scope."
         },
         {
+          "description": "Enables the create_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-folder",
+          "markdownDescription": "Enables the create_folder command without any pre-configured scope."
+        },
+        {
           "description": "Enables the ctxmenu_pick command without any pre-configured scope.",
           "type": "string",
           "const": "allow-ctxmenu-pick",
@@ -283,6 +289,18 @@
           "type": "string",
           "const": "allow-delete-folder",
           "markdownDescription": "Enables the delete_folder command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the download_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-download-cancel",
+          "markdownDescription": "Enables the download_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the download_retry command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-download-retry",
+          "markdownDescription": "Enables the download_retry command without any pre-configured scope."
         },
         {
           "description": "Enables the duplicate_tab command without any pre-configured scope.",
@@ -307,6 +325,12 @@
           "type": "string",
           "const": "allow-exit-split",
           "markdownDescription": "Enables the exit_split command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the export_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-export-backup",
+          "markdownDescription": "Enables the export_backup command without any pre-configured scope."
         },
         {
           "description": "Enables the find_in_page command without any pre-configured scope.",
@@ -361,6 +385,12 @@
           "type": "string",
           "const": "allow-get-version",
           "markdownDescription": "Enables the get_version command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the import_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-backup",
+          "markdownDescription": "Enables the import_backup command without any pre-configured scope."
         },
         {
           "description": "Enables the import_bookmarks command without any pre-configured scope.",
@@ -427,6 +457,18 @@
           "type": "string",
           "const": "allow-mob-switch-tab",
           "markdownDescription": "Enables the mob_switch_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the move_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-move-tab",
+          "markdownDescription": "Enables the move_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the move_tab_to_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-move-tab-to-folder",
+          "markdownDescription": "Enables the move_tab_to_folder command without any pre-configured scope."
         },
         {
           "description": "Enables the nav_back command without any pre-configured scope.",
@@ -579,6 +621,18 @@
           "markdownDescription": "Enables the pw_add command without any pre-configured scope."
         },
         {
+          "description": "Enables the pw_check command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pw-check",
+          "markdownDescription": "Enables the pw_check command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the pw_confirm_insecure command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pw-confirm-insecure",
+          "markdownDescription": "Enables the pw_confirm_insecure command without any pre-configured scope."
+        },
+        {
           "description": "Enables the pw_del command without any pre-configured scope.",
           "type": "string",
           "const": "allow-pw-del",
@@ -597,6 +651,12 @@
           "markdownDescription": "Enables the pw_list command without any pre-configured scope."
         },
         {
+          "description": "Enables the pw_reveal command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pw-reveal",
+          "markdownDescription": "Enables the pw_reveal command without any pre-configured scope."
+        },
+        {
           "description": "Enables the pw_update command without any pre-configured scope.",
           "type": "string",
           "const": "allow-pw-update",
@@ -609,6 +669,18 @@
           "markdownDescription": "Enables the remove_bookmark command without any pre-configured scope."
         },
         {
+          "description": "Enables the remove_bookmarks_batch command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-remove-bookmarks-batch",
+          "markdownDescription": "Enables the remove_bookmarks_batch command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the remove_history_entry command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-remove-history-entry",
+          "markdownDescription": "Enables the remove_history_entry command without any pre-configured scope."
+        },
+        {
           "description": "Enables the rename_folder command without any pre-configured scope.",
           "type": "string",
           "const": "allow-rename-folder",
@@ -619,6 +691,12 @@
           "type": "string",
           "const": "allow-rename-workspace",
           "markdownDescription": "Enables the rename_workspace command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the reopen_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-reopen-tab",
+          "markdownDescription": "Enables the reopen_tab command without any pre-configured scope."
         },
         {
           "description": "Enables the reset_settings command without any pre-configured scope.",
@@ -733,6 +811,12 @@
           "type": "string",
           "const": "allow-toggle-vertical-tabs",
           "markdownDescription": "Enables the toggle_vertical_tabs command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the translate_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-translate-text",
+          "markdownDescription": "Enables the translate_text command without any pre-configured scope."
         },
         {
           "description": "Enables the ui_action command without any pre-configured scope.",
@@ -867,6 +951,12 @@
           "markdownDescription": "Denies the close_workspace command without any pre-configured scope."
         },
         {
+          "description": "Denies the create_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-folder",
+          "markdownDescription": "Denies the create_folder command without any pre-configured scope."
+        },
+        {
           "description": "Denies the ctxmenu_pick command without any pre-configured scope.",
           "type": "string",
           "const": "deny-ctxmenu-pick",
@@ -883,6 +973,18 @@
           "type": "string",
           "const": "deny-delete-folder",
           "markdownDescription": "Denies the delete_folder command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the download_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-download-cancel",
+          "markdownDescription": "Denies the download_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the download_retry command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-download-retry",
+          "markdownDescription": "Denies the download_retry command without any pre-configured scope."
         },
         {
           "description": "Denies the duplicate_tab command without any pre-configured scope.",
@@ -907,6 +1009,12 @@
           "type": "string",
           "const": "deny-exit-split",
           "markdownDescription": "Denies the exit_split command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the export_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-export-backup",
+          "markdownDescription": "Denies the export_backup command without any pre-configured scope."
         },
         {
           "description": "Denies the find_in_page command without any pre-configured scope.",
@@ -961,6 +1069,12 @@
           "type": "string",
           "const": "deny-get-version",
           "markdownDescription": "Denies the get_version command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-backup",
+          "markdownDescription": "Denies the import_backup command without any pre-configured scope."
         },
         {
           "description": "Denies the import_bookmarks command without any pre-configured scope.",
@@ -1027,6 +1141,18 @@
           "type": "string",
           "const": "deny-mob-switch-tab",
           "markdownDescription": "Denies the mob_switch_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the move_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-move-tab",
+          "markdownDescription": "Denies the move_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the move_tab_to_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-move-tab-to-folder",
+          "markdownDescription": "Denies the move_tab_to_folder command without any pre-configured scope."
         },
         {
           "description": "Denies the nav_back command without any pre-configured scope.",
@@ -1179,6 +1305,18 @@
           "markdownDescription": "Denies the pw_add command without any pre-configured scope."
         },
         {
+          "description": "Denies the pw_check command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pw-check",
+          "markdownDescription": "Denies the pw_check command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pw_confirm_insecure command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pw-confirm-insecure",
+          "markdownDescription": "Denies the pw_confirm_insecure command without any pre-configured scope."
+        },
+        {
           "description": "Denies the pw_del command without any pre-configured scope.",
           "type": "string",
           "const": "deny-pw-del",
@@ -1197,6 +1335,12 @@
           "markdownDescription": "Denies the pw_list command without any pre-configured scope."
         },
         {
+          "description": "Denies the pw_reveal command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pw-reveal",
+          "markdownDescription": "Denies the pw_reveal command without any pre-configured scope."
+        },
+        {
           "description": "Denies the pw_update command without any pre-configured scope.",
           "type": "string",
           "const": "deny-pw-update",
@@ -1209,6 +1353,18 @@
           "markdownDescription": "Denies the remove_bookmark command without any pre-configured scope."
         },
         {
+          "description": "Denies the remove_bookmarks_batch command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-remove-bookmarks-batch",
+          "markdownDescription": "Denies the remove_bookmarks_batch command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the remove_history_entry command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-remove-history-entry",
+          "markdownDescription": "Denies the remove_history_entry command without any pre-configured scope."
+        },
+        {
           "description": "Denies the rename_folder command without any pre-configured scope.",
           "type": "string",
           "const": "deny-rename-folder",
@@ -1219,6 +1375,12 @@
           "type": "string",
           "const": "deny-rename-workspace",
           "markdownDescription": "Denies the rename_workspace command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the reopen_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-reopen-tab",
+          "markdownDescription": "Denies the reopen_tab command without any pre-configured scope."
         },
         {
           "description": "Denies the reset_settings command without any pre-configured scope.",
@@ -1333,6 +1495,12 @@
           "type": "string",
           "const": "deny-toggle-vertical-tabs",
           "markdownDescription": "Denies the toggle_vertical_tabs command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the translate_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-translate-text",
+          "markdownDescription": "Denies the translate_text command without any pre-configured scope."
         },
         {
           "description": "Denies the ui_action command without any pre-configured scope.",
@@ -3415,6 +3583,72 @@
           "type": "string",
           "const": "core:window:deny-unminimize",
           "markdownDescription": "Denies the unminimize command without any pre-configured scope."
+        },
+        {
+          "description": "This permission set configures the types of dialogs\navailable from the dialog plugin.\n\n#### Granted Permissions\n\nAll dialog types are enabled.\n\n\n\n#### This default permission set includes:\n\n- `allow-message`\n- `allow-save`\n- `allow-open`",
+          "type": "string",
+          "const": "dialog:default",
+          "markdownDescription": "This permission set configures the types of dialogs\navailable from the dialog plugin.\n\n#### Granted Permissions\n\nAll dialog types are enabled.\n\n\n\n#### This default permission set includes:\n\n- `allow-message`\n- `allow-save`\n- `allow-open`"
+        },
+        {
+          "description": "Enables the ask command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `allow-message` and will be removed in v3)",
+          "type": "string",
+          "const": "dialog:allow-ask",
+          "markdownDescription": "Enables the ask command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `allow-message` and will be removed in v3)"
+        },
+        {
+          "description": "Enables the confirm command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `allow-message` and will be removed in v3)",
+          "type": "string",
+          "const": "dialog:allow-confirm",
+          "markdownDescription": "Enables the confirm command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `allow-message` and will be removed in v3)"
+        },
+        {
+          "description": "Enables the message command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialog:allow-message",
+          "markdownDescription": "Enables the message command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the open command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialog:allow-open",
+          "markdownDescription": "Enables the open command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the save command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialog:allow-save",
+          "markdownDescription": "Enables the save command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ask command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `deny-message` and will be removed in v3)",
+          "type": "string",
+          "const": "dialog:deny-ask",
+          "markdownDescription": "Denies the ask command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `deny-message` and will be removed in v3)"
+        },
+        {
+          "description": "Denies the confirm command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `deny-message` and will be removed in v3)",
+          "type": "string",
+          "const": "dialog:deny-confirm",
+          "markdownDescription": "Denies the confirm command without any pre-configured scope. (**DEPRECATED**: This is now an alias to `deny-message` and will be removed in v3)"
+        },
+        {
+          "description": "Denies the message command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialog:deny-message",
+          "markdownDescription": "Denies the message command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialog:deny-open",
+          "markdownDescription": "Denies the open command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the save command without any pre-configured scope.",
+          "type": "string",
+          "const": "dialog:deny-save",
+          "markdownDescription": "Denies the save command without any pre-configured scope."
         }
       ]
     },

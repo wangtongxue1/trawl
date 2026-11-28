@@ -8,26 +8,42 @@
   --accent: #10b981; --accent-deep: #0b8f66;
   --panel: #ffffff; --bg: #f6f7f9; --hover: rgba(17,24,39,.055);
   --divider: rgba(17,24,39,.08); --border: rgba(17,24,39,.10);
-  --text: #1f2329; --text-dim: #7b8794; --danger: #e0533d;
+  --text: #1f2329; --text-dim: #6b7785; --danger: #ef4444;
+  --shadow-sm: 0 1px 3px rgba(16,24,40,.10);
+  --shadow-md: 0 6px 20px rgba(16,24,40,.12);
 }
+/* 深色主题：浮层跟随 chrome 主题（由脚本读取 get_settings 设置 data-theme） */
+:root[data-theme="dark"] {
+  --panel: #262a31; --bg: #1d2025; --hover: rgba(255,255,255,.08);
+  --divider: rgba(255,255,255,.09); --border: rgba(255,255,255,.12);
+  --text: #e6e8eb; --text-dim: #98a2b3; --danger: #f87171;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+}
+/* 强调色四套（与 style.css 保持一致；浮层独立 webview 需自带规则） */
+:root[data-accent="purple"] { --accent: #8b5cf6; --accent-deep: #6d4ff5; }
+:root[data-accent="blue"]   { --accent: #3b82f6; --accent-deep: #2f6fe0; }
+:root[data-accent="orange"] { --accent: #f59e0b; --accent-deep: #d97706; }
+:root[data-accent="green"]  { --accent: #10b981; --accent-deep: #0b8f66; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { background: transparent; padding: 12px; }
 body {
   font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
   color: var(--text); user-select: none; overflow: hidden;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 svg { display: none; }
 .ic {
-  width: 17px; height: 17px; display: block; flex-shrink: 0;
-  stroke: currentColor; fill: none; stroke-width: 1.7;
+  width: 16px; height: 16px; display: block; flex-shrink: 0;
+  stroke: currentColor; fill: none; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round;
 }
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 16px 42px rgba(16,24,40,.20);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   display: flex; flex-direction: column;
 }
@@ -37,11 +53,11 @@ svg { display: none; }
 .name-input {
   width: 100%; height: 38px;
   border: 1px solid var(--border); border-radius: 10px;
-  background: #fff; color: var(--text);
+  background: var(--panel); color: var(--text);
   padding: 0 12px; font-size: 13px; font-family: inherit; outline: none;
   user-select: text;
 }
-.name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+.name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .colors { display: flex; align-items: center; gap: 8px; margin: 8px 2px 2px; }
 .dot {
   width: 19px; height: 19px; border-radius: 50%;
@@ -50,17 +66,17 @@ svg { display: none; }
   padding: 0; transition: transform .12s ease;
 }
 /* 「无配色」用虚线圈表示，和斜线禁用符号区分开 */
-.dot.none { background: #fff; border: 2px dashed #c2ccd6; }
+.dot.none { background: var(--panel); border: 2px dashed #c2ccd6; }
 .dot:hover { transform: scale(1.12); }
-.dot.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--text-dim); }
+.dot.active { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--text-dim); }
 
 /* 功能列表 */
 .actions { padding: 6px 8px 8px; }
 .act {
   width: 100%; height: 31px;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   border: none; border-radius: 8px; background: transparent;
-  color: var(--text); font-size: 12.5px; font-family: inherit;
+  color: var(--text); font-size: 12px; font-family: inherit;
   cursor: pointer; text-align: left; padding: 0 9px;
 }
 .act:hover { background: var(--hover); }
@@ -70,7 +86,7 @@ svg { display: none; }
 .act .desc { color: var(--text-dim); font-size: 11px; margin-left: auto; }
 .act kbd {
   margin-left: auto; color: var(--text-dim);
-  font-family: inherit; font-size: 10.5px; letter-spacing: .2px;
+  font-family: inherit; font-size: 11px; letter-spacing: .2px;
 }
 .act.danger:hover { color: var(--danger); }
 .act.danger:hover .ic { color: var(--danger); }
@@ -115,18 +131,18 @@ svg { display: none; }
 .dialog {
   width: calc(100% - 36px);
   background: var(--panel);
-  border-radius: 13px;
-  box-shadow: 0 18px 40px rgba(16,24,40,.26);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
   padding: 16px 16px 12px;
 }
-.dialog .dt { font-size: 13.5px; font-weight: 600; }
+.dialog .dt { font-size: 14px; font-weight: 600; }
 .dialog .dd {
   font-size: 12px; color: var(--text-dim);
   line-height: 1.65; margin-top: 7px; word-break: break-word;
 }
 .dialog .da { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .dialog button {
-  height: 30px; padding: 0 14px; border-radius: 8px;
+  height: 32px; padding: 0 14px; border-radius: 8px;
   font-family: inherit; font-size: 12px; cursor: pointer;
   border: 1px solid var(--border); background: var(--panel); color: var(--text);
 }
@@ -135,6 +151,8 @@ svg { display: none; }
 .dialog button.primary:hover { background: var(--accent-deep); }
 .dialog button.danger { border: none; background: var(--danger); color: #fff; }
 .dialog button.danger:hover { filter: brightness(1.06); }
+/* 键盘焦点可见 */
+:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
 </style>
 </head>
 <body>
@@ -159,10 +177,10 @@ svg { display: none; }
     <button class="act" data-act="organize"><svg class="ic"><use href="#i-tidy"/></svg><span class="t">智能标签整理</span><span class="desc">自动按域名归档</span></button>
     <button class="act" data-act="vertical"><svg class="ic"><use href="#i-side"/></svg><span class="t" id="vertical-label">切换为垂直标签栏</span></button>
     <button class="act" data-act="sort"><svg class="ic"><use href="#i-sort"/></svg><span class="t">标签页排序</span><span class="desc">按域名</span></button>
-    <button class="act" data-act="newtab"><svg class="ic"><use href="#i-plus"/></svg><span class="t">在组内添加新标签页</span><kbd>Alt+Shift+C</kbd></button>
+    <button class="act" data-act="newtab"><svg class="ic"><use href="#i-plus"/></svg><span class="t">在组内添加新标签页</span></button>
     <button class="act" data-act="newwin"><svg class="ic"><use href="#i-newwin"/></svg><span class="t">将标签页移至新窗口</span></button>
     <div class="sep"></div>
-    <button class="act danger" data-act="closegroup"><svg class="ic"><use href="#i-close"/></svg><span class="t">关闭分组</span><kbd>Alt+Shift+W</kbd></button>
+    <button class="act danger" data-act="closegroup"><svg class="ic"><use href="#i-close"/></svg><span class="t">关闭分组</span></button>
     <button class="act" data-act="ungroup"><svg class="ic"><use href="#i-ungroup"/></svg><span class="t">取消分组</span><span class="desc">保留标签</span></button>
     <button class="act danger" data-act="delete"><svg class="ic"><use href="#i-trash"/></svg><span class="t">删除分组</span><span class="desc">连同标签</span></button>
   </div>
@@ -185,10 +203,25 @@ svg { display: none; }
 </div>
 
 <script>
+// 跟随 chrome 主题（浮层独立 webview，需自行读取设置）
+try {
+  const tc = window.__TAURI__ && window.__TAURI__.core;
+  tc.invoke('get_settings').then(s => {
+    if (s && (s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+    document.documentElement.dataset.accent = (s && s.accent) || 'green';
+  }).catch(() => {});
+} catch {}
+
 const core = window.__TAURI__.core;
 const invoke = (cmd, args) => core.invoke(cmd, args || {});
 const $ = (s) => document.querySelector(s);
 const close = () => invoke('close_overlay').catch(() => {});
+// 面板动作反馈：面板随即关闭，本浮层里的提示看不到——发给 chrome 的 ext-toast（P2-U4）
+function panelToast(msg) {
+  try { window.__TAURI__.event.emit('ext-toast', msg); } catch {}
+}
 const colorKey = (id) => 'trawl-ws-color-' + id;
 const COLORS = ['', '#3b82f6', '#ef4444', '#b45309', '#16a34a', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#64748b'];
 let st = null;
@@ -299,11 +332,20 @@ function currentName() {
 document.querySelectorAll('.act').forEach(btn => {
   btn.onclick = async () => {
     const act = btn.dataset.act;
-    if (act === 'organize') { await invoke('smart_organize').catch(() => {}); }
-    else if (act === 'vertical') { await invoke('toggle_vertical_tabs').catch(() => {}); }
-    else if (act === 'sort') { await invoke('sort_tabs', { mode: 'domain' }).catch(() => {}); }
-    else if (act === 'newtab') { await invoke('new_tab').catch(() => {}); }
-    else if (act === 'newwin') { await invoke('open_standalone_window', { incognito: false }).catch(() => {}); }
+    if (act === 'organize') {
+      try { await invoke('smart_organize'); panelToast('已按域名智能整理标签'); }
+      catch { panelToast('整理失败，请重试'); }
+    }
+    else if (act === 'vertical') {
+      try { await invoke('toggle_vertical_tabs'); panelToast('已切换标签栏方向'); }
+      catch { panelToast('切换失败，请重试'); }
+    }
+    else if (act === 'sort') {
+      try { await invoke('sort_tabs', { mode: 'domain' }); panelToast('已按域名排序'); }
+      catch { panelToast('排序失败，请重试'); }
+    }
+    else if (act === 'newtab') { await invoke('new_tab').catch(() => panelToast('新建标签页失败')); }
+    else if (act === 'newwin') { await invoke('open_standalone_window', { incognito: false }).catch(() => panelToast('新建窗口失败')); }
     else if (act === 'closegroup') {
       const ok = await askConfirm({
         title: '关闭分组？',

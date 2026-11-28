@@ -59,7 +59,7 @@ struct Tab {
 }
 
 /// 下载记录（用于工具栏徽标与下载面板）
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct DownloadInfo {
     url: String,
     /// started | done | failed
@@ -72,6 +72,15 @@ struct DownloadInfo {
     #[serde(default)]
     total: u64,
     ts: u64,
+    /// 下载任务唯一 id（取消/重试按 id 定位，解决同 URL 并发互相覆盖）。
+    /// 老状态文件无此字段，反序列化时补空串。
+    #[serde(default)]
+    id: String,
+    /// 失败原因分类（成功/进行中为空串）：超时 / 连接失败 / 需要登录 /
+    /// 客户端错误 / 服务器错误 / 写盘失败 / 内容不完整 / 未知错误 / 已取消。
+    /// 老状态文件无此字段，反序列化时补空串。
+    #[serde(default)]
+    error: String,
 }
 
 /// 通用右键菜单项（标签页 / 书签栏 / 工作区共用同一个浮层）
@@ -117,6 +126,9 @@ struct Folder {
 struct Bookmark {
     url: String,
     title: String,
+    /// 所属文件夹路径（"/" 分隔，根书签为空串）。老数据无此字段时默认空，向后兼容
+    #[serde(default)]
+    folder: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -466,6 +478,13 @@ struct AppState {
     mob_tabs: Mutex<Vec<MobTab>>,
     /// 移动端：当前激活标签 id
     mob_active: Mutex<Option<String>>,
+    /// 最近一次本机身份验证通过的时间戳（秒）。pw_reveal 据此判断是否在有效期内，
+    /// 避免 pw_list 把明文密码一次性下发（安全边界放到后端）。
+    pw_verified_at: Mutex<u64>,
+    /// 下载取消令牌：下载 id -> 取消标志。download_cancel 置位，下载线程在读取循环里轮询退出
+    cancel_tokens: Mutex<HashMap<String, std::sync::Arc<AtomicBool>>>,
+    /// 最近关闭的普通标签 (url, title)，最多 20 条，供「重新打开已关闭标签」弹栈使用
+    closed_tabs: Mutex<Vec<(String, String)>>,
 }
 
 /// 一个本地扩展解析出的可注入脚本
@@ -501,6 +520,9 @@ impl Default for AppState {
             ready_webviews: Mutex::new(std::collections::HashSet::new()),
             mob_tabs: Mutex::new(Vec::new()),
             mob_active: Mutex::new(None),
+            pw_verified_at: Mutex::new(0),
+            cancel_tokens: Mutex::new(HashMap::new()),
+            closed_tabs: Mutex::new(Vec::new()),
         }
     }
 }
@@ -806,15 +828,40 @@ fn unique_download_path(dest: &std::path::Path) -> std::path::PathBuf {
     dir.join(format!("{stem}-{}.bin", now_ts()))
 }
 
-/// 后端线程下载：实时更新 DownloadInfo 并推送进度
+/// 后端线程下载：实时更新 DownloadInfo 并推送进度（裸 GET，不附加 Cookie/Referer）
 #[cfg(desktop)]
 fn spawn_download(app: AppHandle, url: String, dest: std::path::PathBuf) {
     std::thread::spawn(move || {
         let dest = unique_download_path(&dest);
+        // 每个任务独立 id 与取消令牌：进度/失败都按 id 定位，同 URL 并发互不覆盖
+        let id = gen_id("dl");
+        let cancel = std::sync::Arc::new(AtomicBool::new(false));
+        {
+            let st = app.state::<AppState>();
+            st.cancel_tokens.lock().unwrap().insert(id.clone(), cancel.clone());
+            let mut list = st.downloads.lock().unwrap();
+            list.push(DownloadInfo {
+                url: url.clone(),
+                state: "started".into(),
+                path: dest.display().to_string(),
+                received: 0,
+                total: 0,
+                ts: now_ts(),
+                id: id.clone(),
+                error: String::new(),
+            });
+            if list.len() > DOWNLOAD_CAP {
+                let excess = list.len() - DOWNLOAD_CAP;
+                list.drain(0..excess);
+            }
+        }
+        push_state(&app);
+
+        // 按 id 定位记录（不再按 url 反查），避免同 URL 并发下载互相覆盖
         let mark = |app: &AppHandle, state: &str, received: u64, total: u64, path: &std::path::Path| {
             let st = app.state::<AppState>();
             let mut list = st.downloads.lock().unwrap();
-            if let Some(d) = list.iter_mut().rev().find(|d| d.url == url) {
+            if let Some(d) = list.iter_mut().find(|d| d.id == id) {
                 d.state = state.into();
                 d.received = received;
                 d.total = total;
@@ -822,13 +869,24 @@ fn spawn_download(app: AppHandle, url: String, dest: std::path::PathBuf) {
                 d.ts = now_ts();
             }
         };
-        let fail = |app: &AppHandle, path: &std::path::Path| {
+        // 失败收口：清理临时文件、写入错误分类、回收取消令牌、落 debug 日志
+        let fail = |app: &AppHandle, reason: &str, path: &std::path::Path| {
             let _ = std::fs::remove_file(path);
-            mark(app, "failed", 0, 0, path);
+            {
+                let st = app.state::<AppState>();
+                if let Some(d) = st.downloads.lock().unwrap().iter_mut().find(|d| d.id == id) {
+                    d.state = "failed".into();
+                    d.error = reason.to_string();
+                    d.received = 0;
+                    d.total = 0;
+                    d.path = path.display().to_string();
+                    d.ts = now_ts();
+                }
+                st.cancel_tokens.lock().unwrap().remove(&id);
+            }
+            debug_log(&format!("下载失败 url={} id={} 原因={}", url, id, reason));
             push_state(app);
         };
-        mark(&app, "started", 0, 0, &dest);
-        push_state(&app);
 
         let client = match reqwest::blocking::Client::builder()
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
@@ -837,11 +895,32 @@ fn spawn_download(app: AppHandle, url: String, dest: std::path::PathBuf) {
             .build()
         {
             Ok(c) => c,
-            Err(_) => return fail(&app, &dest),
+            Err(e) => {
+                debug_log(&format!("下载失败 url={} id={} 阶段=client.build code=- 原因=未知错误 详情={}", url, id, e));
+                return fail(&app, "未知错误", &dest);
+            }
         };
+        // 裸 GET：不附加 Cookie / Referer（带身份的请求是暂缓项）
         let mut resp = match client.get(&url).send() {
             Ok(r) if r.status().is_success() => r,
-            _ => return fail(&app, &dest),
+            Ok(r) => {
+                let status = r.status().as_u16();
+                let reason = match status {
+                    401 | 403 => "需要登录",
+                    400..=499 => "客户端错误",
+                    500..=599 => "服务器错误",
+                    _ => "未知错误",
+                };
+                debug_log(&format!("下载失败 url={} id={} 阶段=http status={} 原因={}", url, id, status, reason));
+                return fail(&app, reason, &dest);
+            }
+            Err(e) => {
+                let reason = if e.is_timeout() { "超时" }
+                    else if e.is_connect() { "连接失败" }
+                    else { "未知错误" };
+                debug_log(&format!("下载失败 url={} id={} 阶段=send code={:?} 原因={}", url, id, e.status(), reason));
+                return fail(&app, reason, &dest);
+            }
         };
         let total = resp.content_length().unwrap_or(0);
         mark(&app, "started", 0, total, &dest);
@@ -849,18 +928,27 @@ fn spawn_download(app: AppHandle, url: String, dest: std::path::PathBuf) {
 
         let mut file = match std::fs::File::create(&dest) {
             Ok(f) => f,
-            Err(_) => return fail(&app, &dest),
+            Err(e) => {
+                debug_log(&format!("下载失败 url={} id={} 阶段=File::create code={} 原因=写盘失败", url, id, e.raw_os_error().unwrap_or(-1)));
+                return fail(&app, "写盘失败", &dest);
+            }
         };
         use std::io::{Read, Write};
         let mut received: u64 = 0;
         let mut last_emit = std::time::Instant::now();
         let mut buf = vec![0u8; 64 * 1024];
         loop {
+            // 取消令牌：download_cancel 置位后尽快退出并清理半成品
+            if cancel.load(Ordering::Relaxed) {
+                debug_log(&format!("下载已取消 url={} id={}", url, id));
+                return fail(&app, "已取消", &dest);
+            }
             match resp.read(&mut buf) {
                 Ok(0) => break,
                 Ok(n) => {
-                    if file.write_all(&buf[..n]).is_err() {
-                        return fail(&app, &dest);
+                    if let Err(e) = file.write_all(&buf[..n]) {
+                        debug_log(&format!("下载失败 url={} id={} 阶段=write_all code={} 原因=写盘失败", url, id, e.raw_os_error().unwrap_or(-1)));
+                        return fail(&app, "写盘失败", &dest);
                     }
                     received += n as u64;
                     if last_emit.elapsed().as_millis() >= 400 {
@@ -869,15 +957,21 @@ fn spawn_download(app: AppHandle, url: String, dest: std::path::PathBuf) {
                         last_emit = std::time::Instant::now();
                     }
                 }
-                Err(_) => return fail(&app, &dest),
+                Err(e) => {
+                    let reason = if e.kind() == std::io::ErrorKind::TimedOut { "超时" } else { "未知错误" };
+                    debug_log(&format!("下载失败 url={} id={} 阶段=read code={} 原因={}", url, id, e.raw_os_error().unwrap_or(-1), reason));
+                    return fail(&app, reason, &dest);
+                }
             }
         }
         let _ = file.flush();
         // total == 0 表示服务器未给出长度（如 chunked），正常读到 EOF 即成功
         if total == 0 || received >= total {
             mark(&app, "done", received, total, &dest);
+            app.state::<AppState>().cancel_tokens.lock().unwrap().remove(&id);
         } else {
-            return fail(&app, &dest);
+            debug_log(&format!("下载失败 url={} id={} 阶段=length total={} received={} 原因=内容不完整", url, id, total, received));
+            return fail(&app, "内容不完整", &dest);
         }
         push_state(&app);
     });
@@ -910,29 +1004,34 @@ fn record_history(state: &AppState, url: &str, title: &str) {
 fn save_bookmarks(state: &AppState) {
     let bookmarks = state.bookmarks.lock().unwrap().clone();
     if let Ok(json) = serde_json::to_string(&bookmarks) {
-        write_atomic(&data_root().join(BOOKMARKS_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(BOOKMARKS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
 }
 
 fn save_history(state: &AppState) {
     let history = state.history.lock().unwrap().clone();
     if let Ok(json) = serde_json::to_string(&history) {
-        write_atomic(&data_root().join(HISTORY_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(HISTORY_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
 }
 
-/// 原子写：先写同目录临时文件再 rename 覆盖。
+/// 原子写序号：给临时文件名加唯一后缀，避免多线程并发写同一文件时互相踩踏
+static WRITE_SEQ: AtomicU32 = AtomicU32::new(0);
+
+/// 原子写：先写同目录唯一临时文件再 rename 覆盖。
 /// 直接 fs::write 覆盖时，若进程被杀 / 磁盘满，会留下半截 JSON——下次启动解析失败，
 /// 书签、历史、密码、会话会整体丢回默认值。rename 是原子操作，要么旧内容要么新内容。
-fn write_atomic(path: &std::path::Path, data: &str) {
-    let tmp = path.with_extension("tmp");
-    if std::fs::write(&tmp, data).is_ok() {
-        if std::fs::rename(&tmp, path).is_err() {
-            // 极少数情况（临时文件被占用）退回直接写
-            let _ = std::fs::write(path, data);
-            let _ = std::fs::remove_file(&tmp);
-        }
+/// 返回 Result，调用方应处理失败（数据写盘失败必须让用户知道）。
+fn write_atomic(path: &std::path::Path, data: &str) -> Result<(), String> {
+    let seq = WRITE_SEQ.fetch_add(1, Ordering::Relaxed);
+    let tmp = path.with_extension(format!("tmp.{}.{}", std::process::id(), seq));
+    std::fs::write(&tmp, data).map_err(|e| format!("写临时文件失败 {}: {}", tmp.display(), e))?;
+    if let Err(e) = std::fs::rename(&tmp, path) {
+        // 不回退到非原子直写——那会留下半截 JSON；删除临时文件并报错
+        let _ = std::fs::remove_file(&tmp);
+        return Err(format!("原子替换失败 {}: {}", path.display(), e));
     }
+    Ok(())
 }
 
 /// 数据文件损坏时保留现场：改名为 xxx.json.corrupt-<时间戳>，方便用户/排障找回内容，
@@ -1078,8 +1177,11 @@ fn webview_url(url: &str) -> Result<WebviewUrl, String> {
     // 支持 trawl://settings#privacy-clear 之类的深链：hash 转成 ?h= 查询参数
     // 传给 settings.html（内部页通过 versioned_url 做缓存键控，不能直接挂 hash）
     if let Some(rest) = url.strip_prefix("trawl://settings") {
-        let target = if rest.len() > 1 {
-            versioned_url(&format!("settings.html?h={}", &rest[1..]))
+        // 按字符边界跳过开头的 '/'（深链形如 trawl://settings#privacy-clear）。
+        // 直接用 &rest[1..] 会在首字符为多字节 UTF-8 时落在字符中间而 panic。
+        let target = if rest.chars().count() > 1 {
+            let skip = rest.chars().next().map(|c| c.len_utf8()).unwrap_or(0);
+            versioned_url(&format!("settings.html?h={}", &rest[skip..]))
         } else {
             versioned_url("settings.html")
         };
@@ -1270,22 +1372,8 @@ fn spawn_tab_webview(app: &AppHandle, id: &str, url: &str) -> Result<(), String>
     let builder = builder.on_download(move |_wv, event| {
         match event {
             DownloadEvent::Requested { url, destination } => {
-                let st = app_dl.state::<AppState>();
-                let mut list = st.downloads.lock().unwrap();
-                list.retain(|d| !(d.state == "started" && d.url == url.to_string()));
-                list.push(DownloadInfo {
-                    url: url.to_string(),
-                    state: "started".into(),
-                    path: destination.display().to_string(),
-                    received: 0,
-                    total: 0,
-                    ts: now_ts(),
-                });
-                if list.len() > DOWNLOAD_CAP {
-                    let excess = list.len() - DOWNLOAD_CAP;
-                    list.drain(0..excess);
-                }
-                drop(list);
+                // 记录创建与 id 生成统一放到 spawn_download：进度按 id 定位，
+                // 同 URL 并发下载互不覆盖（不再按 url 反查/去重）。
                 spawn_download(app_dl.clone(), url.to_string(), destination.clone());
                 push_state(&app_dl);
                 false
@@ -1474,6 +1562,8 @@ fn close_tab(app: &AppHandle, id: &str) {
     let active_ws = state.active_workspace.lock().unwrap().clone();
     let mut tabs = state.tabs.lock().unwrap();
     let mut removed: Option<String> = None;
+    // 最近关闭的普通标签 (url, title)，用于「重新打开已关闭标签」
+    let mut closed: Option<(String, String)> = None;
     let mut neighbor: Option<String> = None;
     if let Some(pos) = tabs.iter().position(|t| t.id == id) {
         // 先按「本工作区 + 未固定」排出可见顺序，再算左右邻居
@@ -1485,6 +1575,10 @@ fn close_tab(app: &AppHandle, id: &str) {
         let ppos = pool.iter().position(|x| x == id).unwrap_or(0);
         let tab = tabs.remove(pos);
         removed = Some(tab.id.clone());
+        // 内部页（trawl://）不入栈，避免「重新打开」塞回一堆设置/新标签页
+        if !tab.url.starts_with("trawl://") {
+            closed = Some((tab.url.clone(), tab.title.clone()));
+        }
         neighbor = match behavior.as_str() {
             "left" => pool
                 .get(ppos.wrapping_sub(1))
@@ -1499,6 +1593,15 @@ fn close_tab(app: &AppHandle, id: &str) {
         };
     }
     drop(tabs);
+    // 压入「最近关闭」栈，最多保留 20 条
+    if let Some((url, title)) = closed {
+        let mut stack = state.closed_tabs.lock().unwrap();
+        stack.push((url, title));
+        if stack.len() > 20 {
+            let excess = stack.len() - 20;
+            stack.drain(0..excess);
+        }
+    }
     if let Some(label) = removed {
         close_webview_later(app, label);
     }
@@ -1994,7 +2097,11 @@ fn exit_split(app: AppHandle) {
 #[cfg(desktop)]
 fn toggle_split_orientation(app: AppHandle) {
     let state = app.state::<AppState>();
-    *state.split_vertical.lock().unwrap() = !*state.split_vertical.lock().unwrap();
+    // 只取一次 guard：同一语句内两次 lock 同一个 Mutex 会自锁（历史 bug）
+    {
+        let mut vertical = state.split_vertical.lock().unwrap();
+        *vertical = !*vertical;
+    }
     refresh_view(&app);
     push_state(&app);
 }
@@ -2008,7 +2115,7 @@ fn toggle_bookmark(app: AppHandle, url: String, title: String) {
     if let Some(pos) = bookmarks.iter().position(|b| b.url == url) {
         bookmarks.remove(pos);
     } else {
-        bookmarks.push(Bookmark { url, title });
+        bookmarks.push(Bookmark { url, title, folder: String::new() });
         bookmarks.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
     }
     drop(bookmarks);
@@ -2022,6 +2129,23 @@ fn remove_bookmark(app: AppHandle, url: String) {
     state.bookmarks.lock().unwrap().retain(|b| b.url != url);
     save_bookmarks(&state);
     push_state(&app);
+}
+
+/// 批量删除书签：一次写盘，避免逐条删除时重复 IO（全选几百条会明显卡顿）
+#[tauri::command]
+fn remove_bookmarks_batch(app: AppHandle, urls: Vec<String>) -> usize {
+    let state = app.state::<AppState>();
+    let url_set: std::collections::HashSet<String> = urls.into_iter().collect();
+    // 在同一次持锁内完成「记旧长度 → 删除 → 算差值」，避免中途其它线程增改导致计数下溢
+    let removed = {
+        let mut bookmarks = state.bookmarks.lock().unwrap();
+        let before = bookmarks.len();
+        bookmarks.retain(|b| !url_set.contains(&b.url));
+        before.saturating_sub(bookmarks.len())
+    };
+    save_bookmarks(&state);
+    push_state(&app);
+    removed
 }
 
 // ---- 历史 ----
@@ -2039,6 +2163,21 @@ fn clear_history(app: AppHandle) {
     state.history.lock().unwrap().clear();
     save_history(&state);
     push_state(&app);
+}
+
+/// 删除单条历史记录（供地址栏建议逐条清除使用）
+#[tauri::command]
+fn remove_history_entry(app: AppHandle, url: String) {
+    let state = app.state::<AppState>();
+    let before = { state.history.lock().unwrap().len() };
+    {
+        let mut h = state.history.lock().unwrap();
+        h.retain(|e| e.url != url);
+    }
+    if { state.history.lock().unwrap().len() } != before {
+        save_history(&state);
+        push_state(&app);
+    }
 }
 
 // ---- 页内查找 ----
@@ -2332,7 +2471,7 @@ fn save_settings(app: AppHandle, settings: Settings) {
     *state.settings.lock().unwrap() = settings.clone();
     let file = data_root().join(SETTINGS_FILE);
     if let Ok(json) = serde_json::to_string(&settings) {
-        write_atomic(&file, &json);
+        if let Err(e) = write_atomic(&file, &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
     push_state(&app);
 }
@@ -2344,7 +2483,7 @@ fn reset_settings(app: AppHandle) -> Settings {
     let fresh = Settings::default();
     *state.settings.lock().unwrap() = fresh.clone();
     if let Ok(json) = serde_json::to_string(&fresh) {
-        write_atomic(&data_root().join(SETTINGS_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(SETTINGS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
     push_state(&app);
     fresh
@@ -2386,7 +2525,7 @@ fn set_autostart(app: AppHandle, enable: bool) {
     s.autostart = enable;
     *state.settings.lock().unwrap() = s.clone();
     if let Ok(json) = serde_json::to_string(&s) {
-        write_atomic(&data_root().join(SETTINGS_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(SETTINGS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
     push_state(&app);
 }
@@ -2415,7 +2554,7 @@ fn get_extensions() -> Vec<ExtensionItem> {
 #[tauri::command]
 fn save_extensions(app: AppHandle, list: Vec<ExtensionItem>) {
     if let Ok(json) = serde_json::to_string(&list) {
-        write_atomic(&data_root().join(EXTENSIONS_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(EXTENSIONS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
     // 启停 / 登记变化后重建本地扩展脚本缓存
     reload_ext_scripts(&app);
@@ -2537,8 +2676,7 @@ const IMMERSIVE_JS: &str = r#"(() => {
     return 'off';
   }
   window.__trawlTrActive = true;
-  const TO0 = '__TO__';
-  const MS_TO = { zh: 'zh-Hans', en: 'en', ja: 'ja', ko: 'ko' };
+  const TO0 = __TO__;
   const LANGS = { zh: '中文（简体）', en: 'English', ja: '日本語', ko: '한국어' };
 
   const panel = document.createElement('div');
@@ -2589,49 +2727,25 @@ const IMMERSIVE_JS: &str = r#"(() => {
     return out;
   }
 
-  async function getToken() {
-    if (getToken._t) return getToken._t;
-    const r = await fetch('https://edge.microsoft.com/translation/service/v2.0/auth', { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error('auth ' + r.status);
-    getToken._t = (await r.text()).trim();
-    return getToken._t;
-  }
-
-  // 渠道一：微软免费通道（Edge 同款，国内直连可用）
-  async function translateViaMs(texts, to) {
-    const token = await getToken();
-    const r = await fetch('https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=' + to, { signal: AbortSignal.timeout(10000),
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(texts.map(t => ({ Text: t }))),
-    });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    return data.map(d => (d.translations && d.translations[0]) ? d.translations[0].text : '');
-  }
-
-  // 渠道二：Google gtx（海外环境自动降级）
-  async function translateViaGg(texts, to) {
-    const outs = [];
-    for (const t of texts) {
-      const r = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=auto&tl=' + to + '&q=' + encodeURIComponent(t), { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error('gtx ' + r.status);
-      const d = await r.json();
-      outs.push((d[0] || []).map(x => x[0]).join(''));
-    }
-    return outs;
-  }
-
+  // 翻译统一走后端代理：后端用 reqwest 直连翻译服务，不受网页 CORS 限制，
+  // 主通道 B站 Index-Translate（免费、国内直连），失败自动降级 Google。
+  // 旧版在页面内 fetch 微软/Google 的架构已废弃：微软 Edge 免费令牌端点已于
+  // 2026-07 下线，Google 国内不可达，页面内跨域 fetch 还被 CORS 拦截。
+  const invokeTr = (() => {
+    try {
+      const it = window.__TAURI_INTERNALS__;
+      return it && typeof it.invoke === 'function' ? it.invoke : null;
+    } catch (e) { return null; }
+  })();
   let channel = '';
   async function translateBatch(texts, to) {
-    try {
-      const o = await translateViaMs(texts, to);
-      channel = '微软翻译';
-      return o;
-    } catch (e) {}
-    const o = await translateViaGg(texts, to);
-    channel = 'Google 翻译';
-    return o;
+    if (!invokeTr) throw new Error('翻译桥不可用');
+    const outs = await invokeTr('translate_text', { texts, to });
+    if (!Array.isArray(outs) || outs.length !== texts.length) {
+      throw new Error('译文格式异常');
+    }
+    channel = '智能翻译';
+    return outs;
   }
 
   let running = false;
@@ -2656,7 +2770,7 @@ const IMMERSIVE_JS: &str = r#"(() => {
       stat.textContent = '待翻译 ' + els.length + ' 个段落';
       for (const batch of batches) {
         const texts = batch.map(el => (el.innerText || '').trim());
-        const outs = await translateBatch(texts, MS_TO[to] || to);
+        const outs = await translateBatch(texts, to);
         for (let i = 0; i < batch.length; i++) {
           const el = batch[i];
           const t = (outs[i] || '').trim();
@@ -2681,13 +2795,158 @@ const IMMERSIVE_JS: &str = r#"(() => {
       stat.textContent = (channel || '翻译') + ' · 已译 ' + els.length + ' 段（双语对照）';
       goBtn.textContent = '还原页面';
     } catch (e) {
-      stat.textContent = '翻译服务连接失败，请检查网络后重试';
+      const reason = (e && e.message) ? String(e.message) : String(e || '');
+      stat.textContent = reason
+        ? ('翻译失败：' + reason.slice(0, 60) + '，请检查网络后重试')
+        : '翻译服务暂不可用，请检查网络后重试';
       goBtn.textContent = '重试';
     }
     running = false;
   }
   translateAll(sel.value);
 })()"#;
+
+/// 翻译默认目标语言码 → 各翻译服务接受的语言码
+fn tr_lang_code(to: &str) -> &'static str {
+    match to {
+        "zh" | "zh-Hans" => "zh",
+        "zh-TW" | "zh-Hant" => "zh-TW",
+        "en" => "en",
+        "ja" => "ja",
+        "ko" => "ko",
+        "fr" => "fr",
+        "de" => "de",
+        "es" => "es",
+        "ru" => "ru",
+        _ => "zh",
+    }
+}
+
+/// 从编号文本里解析译文，按原顺序返回。
+///  LLM 返回形如 "1|译文\n2|译文"，逐行解析编号；缺失的条目回退为空串，
+///  由调用方决定是否保留原文。
+fn parse_numbered_translation(raw: &str, count: usize) -> Vec<String> {
+    let mut out = vec![String::new(); count];
+    for line in raw.lines() {
+        let line = line.trim();
+        if line.is_empty() { continue; }
+        // 支持 "1|xxx"、"1. xxx"、"1、xxx" 等常见编号格式
+        let sep = line.find(|c| c == '|' || c == '.');
+        let Some(pos) = sep.or_else(|| line.find('、')) else { continue };
+        let num_part = line[..pos].trim().trim_start_matches('#').trim();
+        if let Ok(n) = num_part.parse::<usize>() {
+            if n >= 1 && n <= count {
+                let val = line[pos + 1..].trim().trim_matches('"').to_string();
+                out[n - 1] = val;
+            }
+        }
+    }
+    out
+}
+
+/// 主翻译通道：B站 Index-Translate 免费文本翻译 API（无需 Key / Cookie，国内直连）。
+///  OpenAI 兼容格式，批量把多段文本一次翻完，用编号对齐。
+fn translate_via_bilibili(texts: &[String], to: &str) -> Result<Vec<String>, String> {
+    // B站网关会拒绝非浏览器 UA（返回 412），必须带浏览器 UA
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+        .connect_timeout(Duration::from_secs(12))
+        .timeout(Duration::from_secs(40))
+        .build()
+        .map_err(|e| format!("client: {}", e))?;
+
+    let lang = tr_lang_code(to);
+    let lang_name = match lang {
+        "zh" => "简体中文", "zh-TW" => "繁体中文", "en" => "English",
+        "ja" => "日本語", "ko" => "한국어", other => other,
+    };
+    let body_src = texts.iter().enumerate()
+        .map(|(i, t)| format!("{}|{}", i + 1, t))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let prompt = format!(
+        "Translate each numbered line below into {}. Keep the same number prefix, one line per input, output ONLY the translations with no explanation.\n{}",
+        lang_name, body_src
+    );
+    let payload = serde_json::json!({
+        "model": "Index-Translate-35B-A3B",
+        "messages": [{ "role": "user", "content": prompt }],
+        "stream": false,
+        "thinking": { "type": "disabled" }
+    });
+    let resp = client
+        .post("https://index-translate.bilibili.com/v1/chat/completions")
+        .json(&payload)
+        .send()
+        .map_err(|e| format!("请求失败: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status().as_u16()));
+    }
+    let data: serde_json::Value = resp.json().map_err(|e| format!("响应解析: {}", e))?;
+    let content = data["choices"][0]["message"]["content"]
+        .as_str()
+        .ok_or_else(|| "响应无译文".to_string())?;
+    let out = parse_numbered_translation(content, texts.len());
+    if out.iter().all(|s| s.is_empty()) {
+        return Err("译文为空".to_string());
+    }
+    Ok(out)
+}
+
+/// 备用翻译通道：Google gtx（海外网络可用时降级）。国内通常不通，仅作兜底。
+fn translate_via_google(texts: &[String], to: &str) -> Result<Vec<String>, String> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+        .connect_timeout(Duration::from_secs(8))
+        .timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|e| format!("client: {}", e))?;
+    let lang = tr_lang_code(to);
+    let mut out = Vec::with_capacity(texts.len());
+    for text in texts {
+        // 用表单参数提交，reqwest 自动做 URL 编码，避免手动编码遗漏特殊字符
+        let resp = client
+            .post("https://translate.googleapis.com/translate_a/single")
+            .query(&[("client", "gtx"), ("dt", "t"), ("sl", "auto"), ("tl", lang)])
+            .form(&[("q", text.as_str())])
+            .send()
+            .map_err(|e| format!("请求失败: {}", e))?;
+        if !resp.status().is_success() {
+            return Err(format!("HTTP {}", resp.status().as_u16()));
+        }
+        let data: serde_json::Value = resp.json().map_err(|e| format!("响应解析: {}", e))?;
+        let piece = data[0].as_array()
+            .map(|arr| arr.iter().filter_map(|x| x[0].as_str()).collect::<Vec<_>>().join(""))
+            .unwrap_or_default();
+        out.push(piece);
+    }
+    if out.iter().all(|s| s.is_empty()) {
+        return Err("译文为空".to_string());
+    }
+    Ok(out)
+}
+
+/// 供注入脚本调用的整页翻译：把收集到的段落交给后端翻译，返回同序译文数组。
+///  后端用 reqwest 直连，不受网页 CORS 限制；主通道 B站，失败自动降级 Google。
+#[tauri::command]
+#[cfg(desktop)]
+fn translate_text(texts: Vec<String>, to: String) -> Result<Vec<String>, String> {
+    if texts.is_empty() {
+        return Ok(Vec::new());
+    }
+    debug_log(&format!("translate_text: 段落={} 目标={}", texts.len(), to));
+    match translate_via_bilibili(&texts, &to) {
+        Ok(out) => {
+            debug_log(&format!("translate_text: B站通道成功 段落={}", texts.len()));
+            return Ok(out);
+        }
+        Err(e) => debug_log(&format!("translate_text: B站通道失败 {} → 降级 Google", e)),
+    }
+    translate_via_google(&texts, &to).map_err(|e| {
+        debug_log(&format!("translate_text: 全部通道失败 {}", e));
+        format!("翻译服务暂不可用：{}", e)
+    })
+}
 
 /// 页内翻译开关：注入沉浸式翻译脚本（再次注入 = 还原）
 #[tauri::command]
@@ -2710,7 +2969,10 @@ fn toggle_translate(app: AppHandle, id: String, to: Option<String>) {
                 .map(String::from)
         })
         .unwrap_or_else(|| "zh".to_string());
-    let js = IMMERSIVE_JS.replace("__TO__", &target);
+    // 用 JSON 序列化生成 JS 字符串字面量（自动转义引号/反斜杠/换行），
+    // 防止 to 参数注入任意 JS；旧做法 IMMERSIVE_JS.replace("__TO__", &target) 可被 `x';alert(1);//` 突破。
+    let target_js = serde_json::to_string(&target).unwrap_or_else(|_| "\"zh\"".into());
+    let js = IMMERSIVE_JS.replace("__TO__", &target_js);
     let _ = wv.eval(&js);
     debug_log(&format!("translate: eval label={} to={}", id, target));
 }
@@ -2890,7 +3152,15 @@ fn import_bookmarks(app: AppHandle, source: String, path: Option<String>) -> Res
                 let bf = p.join("Bookmarks");
                 if let Ok(content) = std::fs::read_to_string(&bf) {
                     if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
-                        collect_bookmark_nodes(v.get("roots"), &mut found);
+                        // roots 的三个桶（bookmark_bar/other/synced）是浏览器 UI 概念，
+                        // 其 name（"收藏夹栏"等）不计入文件夹路径；只保留桶内真实子文件夹
+                        if let Some(roots) = v.get("roots").and_then(|r| r.as_object()) {
+                            for (_, bucket) in roots {
+                                if let Some(children) = bucket.get("children") {
+                                    collect_bookmark_nodes(Some(children), &mut found, "");
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2904,8 +3174,19 @@ fn import_bookmarks(app: AppHandle, source: String, path: Option<String>) -> Res
     let state = app.state::<AppState>();
     let mut bookmarks = state.bookmarks.lock().unwrap();
     let mut added = 0;
+    let mut updated = 0;
     for b in found {
-        if b.url.starts_with("http") && !bookmarks.iter().any(|x| x.url == b.url) {
+        if !b.url.starts_with("http") {
+            continue;
+        }
+        if let Some(existing) = bookmarks.iter_mut().find(|x| x.url == b.url) {
+            // 已存在：若是之前导入的平铺数据（folder 为空）而这次带上了文件夹，补上 folder
+            if existing.folder.is_empty() && !b.folder.is_empty() {
+                existing.folder = b.folder.clone();
+                existing.title = b.title.clone();
+                updated += 1;
+            }
+        } else {
             bookmarks.push(b);
             added += 1;
         }
@@ -2913,13 +3194,14 @@ fn import_bookmarks(app: AppHandle, source: String, path: Option<String>) -> Res
     drop(bookmarks);
     save_bookmarks(&state);
     push_state(&app);
-    Ok(added)
+    // 返回新增数（含补全文件夹的更新数），让前端有反馈
+    Ok(added + updated)
 }
 
-/// 递归收集 Chrome Bookmarks JSON 里 type=url 的节点
-/// roots 是 object（bookmark_bar/other/synced），必须遍历其 value；
-/// 每个 folder 的 children 是 array，url 节点直接收集。
-fn collect_bookmark_nodes(node: Option<&serde_json::Value>, out: &mut Vec<Bookmark>) {
+/// 递归收集 Chrome Bookmarks JSON 里 type=url 的节点，保留文件夹路径。
+/// roots 是 object（bookmark_bar/other/synced）；folder 节点的 name 作为路径一段，
+/// 用 "/" 分隔。roots 本身不计入路径（其直属书签显示在书签栏根层）。
+fn collect_bookmark_nodes(node: Option<&serde_json::Value>, out: &mut Vec<Bookmark>, folder: &str) {
     let Some(v) = node else { return };
     // url 节点先识别并收集（它本身也是 object，必须在 object 遍历前处理）
     if v.get("type").and_then(|x| x.as_str()) == Some("url") {
@@ -2930,58 +3212,98 @@ fn collect_bookmark_nodes(node: Option<&serde_json::Value>, out: &mut Vec<Bookma
             .unwrap_or("")
             .to_string();
         if url.starts_with("http") {
-            out.push(Bookmark { url, title });
+            out.push(Bookmark { url, title, folder: folder.to_string() });
         }
         return;
     }
-    // array：逐个递归
+    // folder 节点：把 name 追加到路径，再递归 children
+    if v.get("type").and_then(|x| x.as_str()) == Some("folder") {
+        let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("").trim();
+        let next = if name.is_empty() {
+            folder.to_string()
+        } else if folder.is_empty() {
+            name.to_string()
+        } else {
+            format!("{}/{}", folder, name)
+        };
+        if let Some(children) = v.get("children") {
+            collect_bookmark_nodes(Some(children), out, &next);
+        }
+        return;
+    }
+    // array：逐个递归（沿用当前路径）
     if let Some(arr) = v.as_array() {
         for x in arr {
-            collect_bookmark_nodes(Some(x), out);
+            collect_bookmark_nodes(Some(x), out, folder);
         }
         return;
     }
-    // object：roots 的 bookmark_bar/other/synced、folder 的 children 都在这里递归
+    // object：roots 的 bookmark_bar/other/synced 等，沿用当前路径递归
     if let Some(map) = v.as_object() {
         for (_, child) in map {
-            collect_bookmark_nodes(Some(child), out);
+            collect_bookmark_nodes(Some(child), out, folder);
         }
     }
 }
 
-/// 解析 Netscape 书签 HTML（各大浏览器「导出书签」的标准格式）
+/// 在原文字节中查找 ASCII 标签（大小写不敏感），返回字节偏移。
+/// 只在 ASCII 层面比较 needle，非 ASCII 字节不会误匹配；索引始终对应原文，
+/// 避免 `content.to_lowercase()` 因 Unicode 变长映射（如 İ/ẞ）导致偏移错位。
+fn find_tag_ci(bytes: &[u8], needle_lower: &[u8], from: usize) -> Option<usize> {
+    if needle_lower.is_empty() || from > bytes.len() { return None; }
+    bytes[from..].windows(needle_lower.len()).position(|w| {
+        w.iter().zip(needle_lower.iter()).all(|(&b, &n)| b.to_ascii_lowercase() == n)
+    }).map(|p| from + p)
+}
+
+/// 解析 Netscape 书签 HTML（各大浏览器「导出书签」的标准格式）。
+/// 结构：<DL><p> ... <DT><H3>文件夹名</H3> <DL><p> ... <DT><A HREF="url">标题</A> ... </DL> ... </DL>
+/// 用扫描标签的方式维护文件夹栈，保留 <H3> 定义的层级路径。
 fn parse_bookmarks_html(path: &str) -> Result<Vec<Bookmark>, String> {
     let content = std::fs::read_to_string(path).map_err(|e| format!("读取文件失败: {}", e))?;
-    let lower = content.to_lowercase();
+    let bytes = content.as_bytes();
     let mut out = Vec::new();
-    let bytes = lower.as_bytes();
-    let mut i = 0;
-    while let Some(pos) = lower[i..].find("<a ") {
-        let start = i + pos + 3;
-        // href="..."
-        let Some(href_rel) = lower[start..].find("href") else { break };
-        let hstart = start + href_rel;
-        let Some(q1) = lower[hstart..].find('"') else { break };
-        let vstart = hstart + q1 + 1;
-        let Some(q2) = lower[vstart..].find('"') else { break };
-        let url = content[vstart..vstart + q2].to_string();
-        // 标题：到 </a> 为止的文本
-        let Some(gt) = lower[vstart + q2..].find('>') else { break };
-        let tstart = vstart + q2 + gt + 1;
-        let text_len = match lower[tstart..].find("</a") {
-            Some(t) => t,
-            None => break,
-        };
-        let title = content[tstart..tstart + text_len]
-            .trim()
-            .to_string();
+    let mut stack: Vec<String> = Vec::new(); // 当前文件夹路径栈
+    let mut i = 0usize;
+    while i < bytes.len() {
+        // 找下一个感兴趣的开始标签：<h3 / <a  / </dl（全部在原文上按 ASCII 不敏感匹配）
+        let h3 = find_tag_ci(bytes, b"<h3", i);
+        let a = find_tag_ci(bytes, b"<a ", i);
+        let dl_close = find_tag_ci(bytes, b"</dl", i);
+        let next = [h3, a, dl_close].into_iter().flatten().min();
+        let Some(pos) = next else { break };
+        if dl_close == Some(pos) {
+            stack.pop(); // 关闭一层文件夹
+            i = pos + 4;
+            continue;
+        }
+        if h3 == Some(pos) {
+            // 文件夹名：<H3 ...>名称</H3>
+            let Some(gt_rel) = find_tag_ci(bytes, b">", pos) else { break };
+            let ts = gt_rel + 1;
+            let Some(end) = find_tag_ci(bytes, b"</h3", ts) else { break };
+            let name = content[ts..end].trim().to_string();
+            stack.push(name);
+            i = end + 5;
+            continue;
+        }
+        // <a href="..." ...>标题</a>
+        let start = pos + 3;
+        let Some(href_rel) = find_tag_ci(bytes, b"href", start) else { i = start; continue };
+        let hstart = href_rel;
+        let Some(q1) = find_tag_ci(bytes, b"\"", hstart) else { i = hstart; continue };
+        let vstart = q1 + 1;
+        if vstart > bytes.len() { break; }
+        let Some(q2) = find_tag_ci(bytes, b"\"", vstart) else { i = vstart; continue };
+        let url = content[vstart..q2].to_string();
+        let Some(gt) = find_tag_ci(bytes, b">", q2) else { break };
+        let tstart = gt + 1;
+        let Some(text_end) = find_tag_ci(bytes, b"</a", tstart) else { break };
+        let title = content[tstart..text_end].trim().to_string();
         if url.starts_with("http") {
-            out.push(Bookmark { url, title });
+            out.push(Bookmark { url, title, folder: stack.join("/") });
         }
-        i = tstart + text_len;
-        if bytes.len() <= i {
-            break;
-        }
+        i = text_end + 3;
     }
     if out.is_empty() {
         return Err("文件里没有解析到书签（请用浏览器「导出书签」生成的 HTML）".to_string());
@@ -3133,19 +3455,77 @@ fn load_pw_records() -> Vec<PwRecord> {
 
 fn save_pw_records(list: &[PwRecord]) {
     if let Ok(json) = serde_json::to_string(list) {
-        write_atomic(&data_root().join(PASSWORDS_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(PASSWORDS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
 }
 
 #[tauri::command]
 fn pw_list() -> Vec<PwEntry> {
+    // 安全边界：列表不再下发明文密码。需要明文的场景（显示/编辑/安全检查）
+    // 走 pw_reveal / pw_check，二者在后端校验近期是否通过本机身份验证。
     load_pw_records()
         .into_iter()
-        .filter_map(|r| {
-            let password = pw_unprotect(&r.id, &r.blob).unwrap_or_default();
-            Some(PwEntry { id: r.id, site: r.site, username: r.username, password, note: r.note })
+        .map(|r| PwEntry {
+            id: r.id,
+            site: r.site,
+            username: r.username,
+            password: String::new(),
+            note: r.note,
         })
         .collect()
+}
+
+/// 密码显示有效期（秒）：验证通过后 5 分钟内可取明文
+const PW_REVEAL_WINDOW_SECS: u64 = 300;
+
+/// 单条取明文密码：必须在近期（5 分钟内）通过本机身份验证。
+/// 这是真正的安全边界——明文不进列表、不长期缓存在前端。
+#[tauri::command]
+fn pw_reveal(app: AppHandle, id: String) -> Result<String, String> {
+    let state = app.state::<AppState>();
+    let verified_at = *state.pw_verified_at.lock().unwrap();
+    let now = now_ts();
+    if verified_at == 0 || now.saturating_sub(verified_at) > PW_REVEAL_WINDOW_SECS {
+        return Err(String::from("需要先通过本机身份验证才能查看密码"));
+    }
+    let record = load_pw_records().into_iter().find(|r| r.id == id)
+        .ok_or_else(|| "密码条目不存在".to_string())?;
+    pw_unprotect(&record.id, &record.blob)
+}
+
+/// 本机不具备验证能力（not_available）或用户主动关闭验证时，
+/// 前端取得显式确认后调用此命令解锁 pw_reveal / pw_check。
+/// 单独成命令而非在 verify 返回 not_available 时自动解锁，避免仅调用一次 verify 就放行。
+#[tauri::command]
+fn pw_confirm_insecure(app: AppHandle) {
+    let state = app.state::<AppState>();
+    *state.pw_verified_at.lock().unwrap() = now_ts();
+}
+
+/// 后端安全检查：只返回重复/弱口令的条目 id，不返回明文密码本身
+#[tauri::command]
+fn pw_check(app: AppHandle) -> serde_json::Value {
+    let state = app.state::<AppState>();
+    let verified_at = *state.pw_verified_at.lock().unwrap();
+    if verified_at == 0 || now_ts().saturating_sub(verified_at) > PW_REVEAL_WINDOW_SECS {
+        return serde_json::json!({ "need_verify": true, "reused": [], "weak": [] });
+    }
+    let mut plaintexts: Vec<(String, String)> = Vec::new();
+    for r in load_pw_records() {
+        if let Ok(p) = pw_unprotect(&r.id, &r.blob) {
+            plaintexts.push((r.id, p));
+        }
+    }
+    let mut freq: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut weak = Vec::new();
+    for (id, p) in &plaintexts {
+        if !p.is_empty() { freq.entry(p.clone()).or_default().push(id.clone()); }
+        if p.len() < 8 || matches!(p.as_str(), "123456" | "password" | "admin" | "111111" | "000000" | "qwerty") {
+            weak.push(id.clone());
+        }
+    }
+    let reused: Vec<Vec<String>> = freq.into_values().filter(|ids| ids.len() > 1).collect();
+    serde_json::json!({ "need_verify": false, "reused": reused, "weak": weak })
 }
 
 #[tauri::command]
@@ -3186,7 +3566,7 @@ fn pw_update(id: String, username: String, password: String, note: Option<String
 /// 本机身份验证：Windows Hello / macOS Touch ID 或登录密码。
 /// 密码管理工具进入站点详情前必须通过。返回 verified / not_available / denied。
 #[tauri::command]
-async fn verify_user_consent() -> String {
+async fn verify_user_consent(app: AppHandle) -> String {
     let res = tauri::async_runtime::spawn_blocking(|| {
         #[cfg(windows)]
         {
@@ -3242,7 +3622,13 @@ async fn verify_user_consent() -> String {
             "not_available".to_string()
         }
     });
-    res.await.unwrap_or_else(|_| "denied".to_string())
+    let result = res.await.unwrap_or_else(|_| String::from("denied"));
+    // 验证通过时写入时间戳：pw_reveal / pw_check 据此判断能否返回明文（安全边界后端化）
+    if result == "verified" {
+        let state = app.state::<AppState>();
+        *state.pw_verified_at.lock().unwrap() = now_ts();
+    }
+    result
 }
 
 #[tauri::command]
@@ -3419,7 +3805,7 @@ fn save_state(app: &AppHandle) {
     };
     let file = data_root().join(STATE_FILE);
     if let Ok(json) = serde_json::to_string(&saved) {
-        write_atomic(&file, &json);
+        if let Err(e) = write_atomic(&file, &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
 }
 
@@ -3474,7 +3860,7 @@ fn load_settings() -> Settings {
     // 下次启动又走一遍「文件缺失」分支，用户会以为设置没保存。
     if recovered {
         if let Ok(json) = serde_json::to_string(&settings) {
-            write_atomic(&path, &json);
+            if let Err(e) = write_atomic(&path, &json) { debug_log(&format!("写盘失败: {}", e)); }
         }
     }
     settings
@@ -4242,7 +4628,7 @@ fn skip_update(app: AppHandle, version: String) {
     }
     let snap = state.settings.lock().unwrap().clone();
     if let Ok(json) = serde_json::to_string(&snap) {
-        write_atomic(&data_root().join(SETTINGS_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(SETTINGS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
     push_state(&app);
 }
@@ -4251,16 +4637,27 @@ fn skip_update(app: AppHandle, version: String) {
 #[tauri::command]
 #[cfg(desktop)]
 fn open_external(app: AppHandle, url: String) {
-    // 只允许 http/https，避免被当成命令注入
-    if !url.starts_with("http://") && !url.starts_with("https://") {
+    // 严格校验：必须是合法 http/https URL 且有 host，拒绝 shell 元字符
+    // 旧做法 cmd /c start 会把 & | ^ 当命令分隔符，造成命令注入
+    if !url.starts_with("http://") && !url.starts_with("https://") { return; }
+    if url.chars().any(|c| matches!(c, '&' | '|' | '^' | '<' | '>' | '`' | '$' | '\r' | '\n')) {
         return;
     }
+    // host 必须非空（形如 http:// 的裸协议头不允许）
+    let after_scheme = url.split_once("://").map(|(_, r)| r).unwrap_or("");
+    if after_scheme.is_empty() || after_scheme.starts_with('/') { return; }
     let _ = &app;
     #[cfg(windows)]
     {
-        let _ = std::process::Command::new("cmd")
-            .args(["/c", "start", "", &url])
-            .spawn();
+        use windows::core::HSTRING;
+        use windows::Win32::UI::Shell::ShellExecuteW;
+        use windows::Win32::UI::WindowsAndMessaging::SHOW_WINDOW_CMD;
+        let url_h = HSTRING::from(&url);
+        let open_h = HSTRING::from("open");
+        unsafe {
+            // ShellExecuteW 直接交给系统 shell，不经 cmd.exe，参数不存在命令解析
+            ShellExecuteW(None, &open_h, &url_h, None, None, SHOW_WINDOW_CMD(1));
+        }
     }
     #[cfg(not(windows))]
     {
@@ -4416,7 +4813,7 @@ fn toggle_vertical_tabs(app: AppHandle) {
     // 立刻落盘，避免改完关窗丢失
     let settings = state.settings.lock().unwrap().clone();
     if let Ok(json) = serde_json::to_string(&settings) {
-        write_atomic(&data_root().join(SETTINGS_FILE), &json);
+        if let Err(e) = write_atomic(&data_root().join(SETTINGS_FILE), &json) { debug_log(&format!("写盘失败: {}", e)); }
     }
     push_state(&app);
 }
@@ -4476,6 +4873,201 @@ fn clear_downloads(app: AppHandle) {
     let state = app.state::<AppState>();
     state.downloads.lock().unwrap().retain(|d| d.state == "started");
     push_state(&app);
+}
+
+/// 取消指定下载：置取消令牌，下载线程在读取循环里轮询退出、清理临时文件并标记 failed
+#[tauri::command]
+#[cfg(desktop)]
+fn download_cancel(app: AppHandle, id: String) -> bool {
+    let st = app.state::<AppState>();
+    // 绑到局部变量，确保 MutexGuard 临时量在 st 之前释放（否则尾部表达式借用冲突）
+    let found = {
+        let tokens = st.cancel_tokens.lock().unwrap();
+        if let Some(flag) = tokens.get(&id) {
+            flag.store(true, Ordering::Relaxed);
+            true
+        } else {
+            false
+        }
+    };
+    found
+}
+
+/// 重试下载：复用历史记录的目标路径重新发起裸 GET；无记录时落到系统下载目录
+#[tauri::command]
+#[cfg(desktop)]
+fn download_retry(app: AppHandle, url: String) -> bool {
+    let st = app.state::<AppState>();
+    let dest = {
+        let list = st.downloads.lock().unwrap();
+        list.iter()
+            .rev()
+            .find(|d| d.url == url && !d.path.is_empty())
+            .map(|d| std::path::PathBuf::from(&d.path))
+    };
+    let dest = dest.unwrap_or_else(|| {
+        let name = url.rsplit('/').next().unwrap_or("download");
+        let name = name.split('?').next().unwrap_or("download");
+        app.path()
+            .download_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(if name.is_empty() { "download" } else { name })
+    });
+    spawn_download(app, url, dest);
+    true
+}
+
+/// 重新打开最近关闭的普通标签：弹栈返回 url，前端负责用 new_tab 打开
+#[tauri::command]
+#[cfg(desktop)]
+fn reopen_tab(app: AppHandle) -> Option<String> {
+    app.state::<AppState>()
+        .closed_tabs
+        .lock()
+        .unwrap()
+        .pop()
+        .map(|(url, _title)| url)
+}
+
+/// 备份数据结构：带版本号，便于后续格式升级兼容
+#[derive(Serialize, Deserialize)]
+struct BackupPayload {
+    version: u32,
+    exported_at: u64,
+    history: Vec<HistoryEntry>,
+    bookmarks: Vec<Bookmark>,
+    passwords: Vec<PwRecord>,
+    settings: Settings,
+    downloads: Vec<DownloadInfo>,
+}
+
+/// 导出备份：历史/书签/密码/设置/下载 -> 下载目录 trawl-backup-<时间戳>.json，返回绝对路径；失败返回空串
+#[tauri::command]
+#[cfg(desktop)]
+fn export_backup(app: AppHandle) -> String {
+    let st = app.state::<AppState>();
+    let payload = BackupPayload {
+        version: 1,
+        exported_at: now_ts(),
+        history: st.history.lock().unwrap().clone(),
+        bookmarks: st.bookmarks.lock().unwrap().clone(),
+        passwords: load_pw_records(),
+        settings: st.settings.lock().unwrap().clone(),
+        downloads: st.downloads.lock().unwrap().clone(),
+    };
+    let json = match serde_json::to_string_pretty(&payload) {
+        Ok(j) => j,
+        Err(e) => {
+            debug_log(&format!("导出备份失败：序列化失败 {}", e));
+            return String::new();
+        }
+    };
+    let dir = match app.path().download_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            debug_log(&format!("导出备份失败：获取下载目录失败 {}", e));
+            return String::new();
+        }
+    };
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        debug_log(&format!("导出备份失败：创建目录失败 {}", e));
+        return String::new();
+    }
+    let path = dir.join(format!("trawl-backup-{}.json", now_ts()));
+    if let Err(e) = write_atomic(&path, &json) {
+        debug_log(&format!("导出备份失败：写盘失败 {}", e));
+        return String::new();
+    }
+    let out = path.to_string_lossy().into_owned();
+    debug_log(&format!(
+        "导出备份成功 path={} 历史={} 书签={} 密码={} 下载={}",
+        out, payload.history.len(), payload.bookmarks.len(), payload.passwords.len(), payload.downloads.len()
+    ));
+    out
+}
+
+/// 导入备份：校验版本/结构，按 url/site 去重合并回各状态并持久化；失败返回 false
+#[tauri::command]
+#[cfg(desktop)]
+fn import_backup(app: AppHandle, path: String) -> bool {
+    let content = match read_json_text(std::path::Path::new(&path)) {
+        Some(c) => c,
+        None => {
+            debug_log(&format!("导入备份失败：读取文件失败 path={}", path));
+            return false;
+        }
+    };
+    let payload: BackupPayload = match serde_json::from_str(&content) {
+        Ok(p) => p,
+        Err(e) => {
+            debug_log(&format!("导入备份失败：结构解析失败 path={} err={}", path, e));
+            return false;
+        }
+    };
+    if payload.version != 1 {
+        debug_log(&format!("导入备份失败：版本不支持 version={}", payload.version));
+        return false;
+    }
+    let st = app.state::<AppState>();
+    // 历史：按 url 去重，同 url 保留较新的 ts
+    {
+        let mut list = st.history.lock().unwrap();
+        for h in payload.history {
+            if let Some(old) = list.iter_mut().find(|x| x.url == h.url) {
+                if h.ts > old.ts { *old = h; }
+            } else {
+                list.push(h);
+            }
+        }
+        if list.len() > HISTORY_CAP {
+            let excess = list.len() - HISTORY_CAP;
+            list.drain(0..excess);
+        }
+    }
+    // 书签：按 url 去重
+    {
+        let mut list = st.bookmarks.lock().unwrap();
+        for b in payload.bookmarks {
+            if !list.iter().any(|x| x.url == b.url) { list.push(b); }
+        }
+    }
+    // 密码：按 site + username 去重（blob 为 DPAPI/钥匙串密文，仅同机同账户可解）
+    {
+        let mut list = load_pw_records();
+        for p in payload.passwords {
+            if !list.iter().any(|x| x.site == p.site && x.username == p.username) {
+                list.push(p);
+            }
+        }
+        save_pw_records(&list);
+    }
+    // 设置：用户主动导入，以备份为准整体覆盖
+    *st.settings.lock().unwrap() = payload.settings;
+    // 下载：按 url + ts 去重
+    {
+        let mut list = st.downloads.lock().unwrap();
+        for d in payload.downloads {
+            if !list.iter().any(|x| x.url == d.url && x.ts == d.ts) {
+                list.push(d);
+            }
+        }
+        if list.len() > DOWNLOAD_CAP {
+            let excess = list.len() - DOWNLOAD_CAP;
+            list.drain(0..excess);
+        }
+    }
+    // 持久化（下载记录本应用不单独落盘，保留在内存并推送状态）
+    save_history(&st);
+    save_bookmarks(&st);
+    let settings = st.settings.lock().unwrap().clone();
+    if let Ok(json) = serde_json::to_string(&settings) {
+        if let Err(e) = write_atomic(&data_root().join(SETTINGS_FILE), &json) {
+            debug_log(&format!("写盘失败: {}", e));
+        }
+    }
+    push_state(&app);
+    debug_log(&format!("导入备份成功 path={}", path));
+    true
 }
 
 /// 弹窗打开时显示的历史总条数（预估用）
@@ -4540,7 +5132,9 @@ fn capture_screen(app: AppHandle) -> Result<String, String> {
     use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, PW_RENDERFULLCONTENT};
     use windows::core::PCWSTR;
 
-    let Some(win) = app.get_webview_window("main") else {
+    // 主窗口是纯 Window（无关联 webview），必须用 get_window；
+    // get_webview_window("main") 永远返回 None，导致截图 100% 失败。
+    let Some(win) = app.get_window("main") else {
         return Err("主窗口不存在".into());
     };
     let hwnd = win.hwnd().map_err(|e| e.to_string())?;
@@ -4608,7 +5202,14 @@ fn clear_browsing_data(
     downloads: bool,
 ) -> serde_json::Value {
     let state = app.state::<AppState>();
-    let cutoff: u64 = if hours == 0 { 0 } else { now_ts().saturating_sub(hours * 3600) };
+    // hours 前端可控：乘法与减法都要防溢出，否则 debug panic / release 回绕导致误删历史
+    let cutoff: u64 = if hours == 0 {
+        0
+    } else {
+        hours.checked_mul(3600)
+            .and_then(|secs| now_ts().checked_sub(secs))
+            .unwrap_or(0)
+    };
     let mut result = serde_json::json!({
         "history": 0, "downloads": 0, "cache_items": 0, "cache_pending": false
     });
@@ -4626,8 +5227,13 @@ fn clear_browsing_data(
     if downloads {
         let mut list = state.downloads.lock().unwrap();
         let before = list.len();
-        list.retain(|d| d.state == "started");
+        // 与 history 分支同语义：删除 cutoff 之后（所选时间范围内）的已完成/失败记录，
+        // 保留范围外的旧记录 + 进行中的任务。hours=0 时 cutoff=0，仅留 started。
+        // 注意：契约里写的 d.ts >= cutoff 方向相反（那样 hours=0 会一条不删），已按实际语义纠正。
+        list.retain(|d| d.ts < cutoff || d.state == "started");
         result["downloads"] = serde_json::json!(before - list.len());
+        drop(list);
+        push_state(&app);
     }
 
     if cookies || cache {
@@ -4748,7 +5354,7 @@ const MOD_ALT_NR: u32 = 0x0001 | 0x4000;
 const MOD_CTRL_NR: u32 = 0x0002 | 0x4000;
 const MOD_CTRL_SHIFT_NR: u32 = 0x0002 | 0x0004 | 0x4000;
 
-const HOTKEYS: [(i32, u32, u32); 17] = [
+const HOTKEYS: [(i32, u32, u32); 19] = [
     (1, MOD_CTRL_NR, b'T' as u32),
     (2, MOD_CTRL_NR, b'H' as u32),
     (3, MOD_CTRL_NR, b'F' as u32),
@@ -4766,6 +5372,11 @@ const HOTKEYS: [(i32, u32, u32); 17] = [
     (15, MOD_CTRL_NR, b'0' as u32),
     (16, MOD_CTRL_NR, 0x09),        // VK_TAB       Ctrl+Tab   下一个标签
     (17, MOD_CTRL_SHIFT_NR, 0x09),  // VK_TAB       Ctrl+Shift+Tab 上一个标签
+    // 只在 Trawl 窗口聚焦期间注册（set_hotkeys_enabled 按 Focused 切换），
+    // 焦点在标签页 webview 里时 chrome 的 keydown 收不到，靠这两条全局热键补齐。
+    // Ctrl+Shift+T 恢复最近关闭标签；Ctrl+Shift+L 标签列表。
+    (18, MOD_CTRL_SHIFT_NR, b'T' as u32),
+    (19, MOD_CTRL_SHIFT_NR, b'L' as u32),
 ];
 
 /// 非 Windows 平台：热键依赖 Win32 RegisterHotKey，暂不提供
@@ -4840,6 +5451,8 @@ fn start_global_hotkeys(app: AppHandle) {
                         15 => { let _ = app.emit_to(CHROME_LABEL, "shortcut", serde_json::json!({ "what": "zoom_reset" })); }
                         16 => { let _ = app.emit_to(CHROME_LABEL, "shortcut", serde_json::json!({ "what": "tab_next" })); }
                         17 => { let _ = app.emit_to(CHROME_LABEL, "shortcut", serde_json::json!({ "what": "tab_prev" })); }
+                        18 => { let _ = app.emit_to(CHROME_LABEL, "shortcut", serde_json::json!({ "what": "reopen_tab" })); }
+                        19 => { let _ = app.emit_to(CHROME_LABEL, "shortcut", serde_json::json!({ "what": "tablist" })); }
                         _ => {}
                     }
                 }
@@ -4894,6 +5507,8 @@ fn desktop_run() {
                 let _ = w.set_focus();
             }
         }))
+        // 文件选择器：导入书签/密码/备份时让用户挑文件（desktop_run 已 cfg(desktop) 门控）
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             settings: Mutex::new(load_settings()),
             ..Default::default()
@@ -4911,6 +5526,7 @@ fn desktop_run() {
             adjust_split_ratio,
             activate_tab,
             close_tab_cmd,
+            reopen_tab,
             move_tab,
             toggle_pin,
             create_folder,
@@ -4925,8 +5541,10 @@ fn desktop_run() {
             toggle_split_orientation,
             toggle_bookmark,
             remove_bookmark,
+            remove_bookmarks_batch,
             get_history,
             clear_history,
+            remove_history_entry,
             find_in_page,
             new_workspace,
             rename_workspace,
@@ -4949,8 +5567,12 @@ fn desktop_run() {
             save_extensions,
             load_unpacked_ext,
             toggle_translate,
+            translate_text,
             import_bookmarks,
             pw_list,
+            pw_reveal,
+            pw_check,
+            pw_confirm_insecure,
             pw_add,
             pw_update,
             pw_del,
@@ -4972,6 +5594,10 @@ fn desktop_run() {
             zoom_page,
             get_downloads,
             clear_downloads,
+            download_cancel,
+            download_retry,
+            export_backup,
+            import_backup,
             clear_browsing_data,
             get_initial_history_count,
             print_page,
@@ -4997,6 +5623,10 @@ fn desktop_run() {
             open_standalone_window
         ])
         .setup(|app| {
+            // 白屏排查锚点：setup 里每一步都落盘。进程活着但没有 WebView2 子进程、
+            // 且看不到 "app ready" 时，靠这几条日志可定位卡在哪一步（常见于
+            // WebView2 用户数据目录被上一次未退出的实例占用）。
+            debug_log("=== setup start ===");
             start_creator(app.handle().clone());
             // 任务栏托盘：关闭窗口默认缩到这里（设置里可改成完全关闭）
             {
@@ -5061,6 +5691,7 @@ fn desktop_run() {
                 }
             }
             let size = window.inner_size().unwrap_or_default();
+            debug_log("=== setup: main window created, adding chrome webview ===");
             // 初始化内容区布局（逻辑像素），避免第一帧标签页用 800x600 的默认值
             {
                 let st = app.state::<AppState>();
@@ -5082,6 +5713,7 @@ fn desktop_run() {
                     size,
                 )
                 .map_err(|e| format!("创建UI webview失败: {e}"))?;
+            debug_log("=== setup: chrome webview added ===");
             // 预热浮层放在创建线程里做：add_child 不能在主线程调用
             spawn_create(app.handle(), |app| warm_popups(app));
             Ok(())
@@ -5485,7 +6117,7 @@ fn mob_new_tab(app: AppHandle) {
 fn mob_switch_tab(app: AppHandle, id: String) {
     let state = app.state::<AppState>();
     let url = {
-        let mut act = state.mob_active.lock().unwrap();
+        // 锁顺序统一为 mob_tabs → mob_active（与其它 mob_* 一致，避免 ABBA 死锁）
         let url = state
             .mob_tabs
             .lock()
@@ -5493,7 +6125,7 @@ fn mob_switch_tab(app: AppHandle, id: String) {
             .iter()
             .find(|t| t.id == id)
             .map(|t| t.url.clone());
-        *act = Some(id);
+        *state.mob_active.lock().unwrap() = Some(id);
         url
     };
     drop(state);
@@ -5576,8 +6208,10 @@ fn mobile_run() {
             reset_settings,
             get_history,
             clear_history,
+            remove_history_entry,
             toggle_bookmark,
             remove_bookmark,
+            remove_bookmarks_batch,
             import_bookmarks,
             get_extensions,
             save_extensions,
@@ -5585,6 +6219,9 @@ fn mobile_run() {
             clear_downloads,
             skip_update,
             pw_list,
+            pw_reveal,
+            pw_check,
+            pw_confirm_insecure,
             pw_add,
             pw_update,
             pw_del,
@@ -5666,11 +6303,57 @@ mod tests {
             "version": 1
         });
         let mut out = Vec::new();
-        collect_bookmark_nodes(json.get("roots"), &mut out);
+        // 与 import_bookmarks 一致：遍历 roots 的各桶 children，桶名不计入路径
+        if let Some(roots) = json.get("roots").and_then(|r| r.as_object()) {
+            for (_, bucket) in roots {
+                if let Some(children) = bucket.get("children") {
+                    collect_bookmark_nodes(Some(children), &mut out, "");
+                }
+            }
+        }
         assert_eq!(out.len(), 3, "应收集全部 3 条书签（含嵌套文件夹）");
         assert!(out.iter().any(|b| b.url == "https://www.bing.com/"));
         assert!(out.iter().any(|b| b.url == "https://github.com/"));
         assert!(out.iter().any(|b| b.url == "https://www.baidu.com/"));
+        // 文件夹路径：根桶名（Bookmarks bar）不计入，只保留真实子文件夹
+        let gh = out.iter().find(|b| b.url == "https://github.com/").unwrap();
+        assert_eq!(gh.folder, "子文件夹", "嵌套文件夹应记录路径，不含根桶名");
+        let bing = out.iter().find(|b| b.url == "https://www.bing.com/").unwrap();
+        assert_eq!(bing.folder, "", "根桶直属书签 folder 应为空");
+    }
+
+    #[test]
+    fn netscape_html_folder_path_parsed() {
+        let html = r#"<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><A HREF="https://root.example/">根书签</A>
+    <DT><H3>工作</H3>
+    <DL><p>
+        <DT><A HREF="https://work.example/">工作书签</A>
+        <DT><H3>子目录</H3>
+        <DL><p>
+            <DT><A HREF="https://sub.example/">子书签</A>
+        </DL><p>
+        <DT><H3>İstanbul ẞ</H3>
+        <DL><p>
+            <DT><A HREF="https://unicode.example/İ">Unicode 书签</A>
+        </DL><p>
+    </DL><p>
+</DL><p>"#;
+        let dir = std::env::temp_dir().join(format!("trawl-html-{}", now_ts()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("bookmarks.html");
+        std::fs::write(&f, html).unwrap();
+        let out = parse_bookmarks_html(f.to_str().unwrap()).unwrap();
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(out.len(), 4, "含 Unicode 字符的书签不应丢失（M1 回归）");
+        assert_eq!(out[0].folder, "", "根书签 folder 为空");
+        assert_eq!(out[1].folder, "工作");
+        assert_eq!(out[2].folder, "工作/子目录", "嵌套文件夹路径用 / 分隔");
+        assert_eq!(out[3].folder, "工作/İstanbul ẞ", "变长小写映射字符的文件夹名应完整保留");
+        assert_eq!(out[3].url, "https://unicode.example/İ", "Unicode URL 应完整保留");
     }
 
     #[test]
@@ -5784,9 +6467,9 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("trawl-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("t.json");
-        write_atomic(&f, "{\"a\":1}");
+        if let Err(e) = write_atomic(&f, "{\"a\":1}") { debug_log(&format!("写盘失败: {}", e)); }
         assert_eq!(std::fs::read_to_string(&f).unwrap(), "{\"a\":1}");
-        write_atomic(&f, "{\"a\":2}");
+        if let Err(e) = write_atomic(&f, "{\"a\":2}") { debug_log(&format!("写盘失败: {}", e)); }
         assert_eq!(std::fs::read_to_string(&f).unwrap(), "{\"a\":2}");
         assert!(!dir.join("t.tmp").exists(), "临时文件应被 rename 掉");
         let _ = std::fs::remove_dir_all(&dir);

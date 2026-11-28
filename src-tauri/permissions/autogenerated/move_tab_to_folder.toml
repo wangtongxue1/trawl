@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-move-tab-to-folder"
+description = "Enables the move_tab_to_folder command without any pre-configured scope."
+commands.allow = ["move_tab_to_folder"]
+
+[[permission]]
+identifier = "deny-move-tab-to-folder"
+description = "Denies the move_tab_to_folder command without any pre-configured scope."
+commands.deny = ["move_tab_to_folder"]

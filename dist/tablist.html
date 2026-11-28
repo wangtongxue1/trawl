@@ -8,8 +8,24 @@
   --accent: #10b981; --accent-deep: #0b8f66;
   --panel: #ffffff; --bg: #f6f7f9; --hover: rgba(17,24,39,.06);
   --border: rgba(17,24,39,.10); --divider: rgba(17,24,39,.07);
-  --text: #1f2329; --text-dim: #7b8794;
+  --text: #1f2329; --text-dim: #6b7785; --danger: #ef4444;
+  --shadow-sm: 0 1px 3px rgba(16,24,40,.10);
+  --shadow-md: 0 6px 20px rgba(16,24,40,.12);
 }
+/* 深色主题：浮层跟随 chrome 主题（由脚本读取 get_settings 设置 data-theme） */
+:root[data-theme="dark"] {
+  --panel: #262a31; --bg: #1d2025; --hover: rgba(255,255,255,.08);
+  --divider: rgba(255,255,255,.09); --border: rgba(255,255,255,.12);
+  --text: #e6e8eb; --text-dim: #98a2b3; --danger: #f87171;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+}
+/* 强调色四套（与 style.css 保持一致；浮层独立 webview 需自带规则） */
+:root[data-accent="purple"] { --accent: #8b5cf6; --accent-deep: #6d4ff5; }
+:root[data-accent="blue"]   { --accent: #3b82f6; --accent-deep: #2f6fe0; }
+:root[data-accent="orange"] { --accent: #f59e0b; --accent-deep: #d97706; }
+:root[data-accent="green"]  { --accent: #10b981; --accent-deep: #0b8f66; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   background: transparent;
@@ -29,36 +45,36 @@ body {
   height: 100%;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 28px rgba(16,24,40,.16), 0 2px 6px rgba(16,24,40,.06);
+  box-shadow: var(--shadow-md);
 }
 .head {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--divider);
   flex-shrink: 0;
 }
 .head .title { font-size: 14px; font-weight: 600; }
-.head .count { font-size: 11.5px; color: var(--text-dim); }
+.head .count { font-size: 12px; color: var(--text-dim); }
 .search {
   flex: 1;
   max-width: 260px;
   margin-left: auto;
-  height: 30px;
+  height: 32px;
   border: 1px solid transparent;
   border-radius: 999px;
   background: var(--bg);
   padding: 0 12px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text);
   outline: none;
   font-family: inherit;
 }
-.search:focus { background: #fff; border-color: var(--accent); }
+.search:focus { background: var(--bg); border-color: var(--accent); }
 .btn {
   border: none; background: var(--bg); color: var(--text-dim);
-  height: 30px; padding: 0 12px; border-radius: 8px;
+  height: 32px; padding: 0 12px; border-radius: 8px;
   font-size: 12px; cursor: pointer; font-family: inherit; flex-shrink: 0;
 }
 .btn:hover { background: var(--hover); color: var(--text); }
@@ -72,7 +88,7 @@ body {
   padding: 18px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 14px;
+  gap: 12px;
   align-content: start;
 }
 .grid::-webkit-scrollbar { width: 8px; }
@@ -80,17 +96,17 @@ body {
 
 .card {
   position: relative;
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 8px;
   padding: 14px;
   min-height: 148px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--panel);
   cursor: pointer;
   transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
 }
-.card:hover { border-color: var(--accent); box-shadow: 0 6px 18px rgba(16,24,40,.10); }
-.card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, #fff); }
+.card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--panel)); }
 .card .top { display: flex; align-items: center; gap: 8px; }
 .card .fav {
   width: 22px; height: 22px; border-radius: 6px;
@@ -101,7 +117,7 @@ body {
 }
 .card .fav img { width: 16px; height: 16px; object-fit: contain; }
 .card .name {
-  font-size: 12.5px; line-height: 1.35;
+  font-size: 12px; line-height: 1.35;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -117,9 +133,11 @@ body {
 .card .x:hover { background: var(--hover); color: var(--text); }
 .card.plus {
   align-items: center; justify-content: center;
-  border-style: dashed; color: var(--text-dim); font-size: 12.5px;
+  border-style: dashed; color: var(--text-dim); font-size: 12px;
 }
-.empty { color: var(--text-dim); font-size: 12.5px; padding: 24px; text-align: center; grid-column: 1 / -1; }
+.empty { color: var(--text-dim); font-size: 12px; padding: 24px; text-align: center; grid-column: 1 / -1; }
+/* 键盘焦点可见 */
+:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
 </style>
 </head>
 <body>
@@ -134,9 +152,56 @@ body {
   <div class="grid" id="grid"></div>
 </div>
 <script>
+// 跟随 chrome 主题（浮层独立 webview，需自行读取设置）
+try {
+  const tc = window.__TAURI__ && window.__TAURI__.core;
+  tc.invoke('get_settings').then(s => {
+    if (s && (s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+    document.documentElement.dataset.accent = (s && s.accent) || 'green';
+  }).catch(() => {});
+} catch {}
+
 const { invoke } = window.__TAURI__.core;
 const $ = (s) => document.querySelector(s);
 const close = () => invoke('close_overlay').catch(() => {});
+
+// 自绘确认弹窗（替代原生 window.confirm），返回 Promise<boolean>
+function askConfirm(msg) {
+  return new Promise(function (resolve) {
+    var old = document.getElementById('ask-confirm-mask');
+    if (old) old.remove();
+    var done = false;
+    function fin(v) { if (done) return; done = true; var w = document.getElementById('ask-confirm-mask'); if (w) w.remove(); resolve(v); }
+    var wrap = document.createElement('div');
+    wrap.id = 'ask-confirm-mask';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#1f2937;color:#e5e7eb;border:1px solid #374151;border-radius:12px;padding:18px 20px;max-width:320px;font-size:13px;line-height:1.6;box-shadow:0 12px 40px rgba(0,0,0,.35)';
+    var p = document.createElement('div');
+    p.textContent = msg;
+    var bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:14px';
+    function mk(label, primary) {
+      var b = document.createElement('button');
+      b.textContent = label;
+      b.style.cssText = 'padding:6px 14px;border-radius:8px;border:1px solid #374151;background:' + (primary ? 'var(--accent-deep, #0b8f66)' : 'transparent') + ';color:' + (primary ? '#fff' : '#e5e7eb') + ';cursor:pointer;font-size:13px';
+      b.onclick = function () { fin(primary); };
+      return b;
+    }
+    var cancelBtn = mk('取消', false);
+    bar.appendChild(cancelBtn);
+    bar.appendChild(mk('确定', true));
+    box.appendChild(p); box.appendChild(bar); wrap.appendChild(box);
+    wrap.addEventListener('click', function (e) { if (e.target === wrap) fin(false); });
+    wrap.tabIndex = -1;
+    document.body.appendChild(wrap);
+    cancelBtn.focus();
+    wrap.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); fin(false); } });
+  });
+}
+
 
 let st = { tabs: [], activeTab: '', activeWorkspace: '' };
 let filter = '';
@@ -144,6 +209,8 @@ let filter = '';
 function hostOf(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
 }
+// favicon 内存缓存：host -> 'ok' | 'fail'（成功/失败都缓存，避免重复请求）
+const FAVICON_CACHE = new Map();
 function isInternal(t) {
   return t.url.startsWith('trawl://') || t.url.includes('/newtab.html') || t.url.includes('/settings.html');
 }
@@ -174,7 +241,7 @@ function render() {
     fav.textContent = isInternal(t) ? 'T' : (host ? host.charAt(0).toUpperCase() : '·');
     // 内置页用带背景的 T，真实站点优先用本地图标，避免远程请求拖慢
     if (isInternal(t)) {
-      fav.style.background = 'linear-gradient(135deg,#10b981,#0b8f66)';
+      fav.style.background = 'linear-gradient(135deg, var(--accent, #10b981), var(--accent-deep, #0b8f66))';
       fav.style.color = '#fff';
     } else {
       const LOCAL = {
@@ -187,11 +254,12 @@ function render() {
         img.src = localIcon;
         img.onload = () => { if (img.naturalWidth > 1) { fav.textContent = ''; fav.appendChild(img); } };
         img.onerror = () => {};
-      } else if (host) {
+      } else if (host && FAVICON_CACHE.get(host) !== 'fail') {
+        // favicon 内存缓存：失败过的 host 不再重复请求
         const img = document.createElement('img');
         img.src = `https://${host}/favicon.ico`;
-        img.onload = () => { if (img.naturalWidth > 1) { fav.textContent = ''; fav.appendChild(img); } };
-        img.onerror = () => {};
+        img.onload = () => { FAVICON_CACHE.set(host, 'ok'); if (img.naturalWidth > 1) { fav.textContent = ''; fav.appendChild(img); } };
+        img.onerror = () => FAVICON_CACHE.set(host, 'fail');
       }
     }
     top.appendChild(fav);
@@ -210,6 +278,7 @@ function render() {
     x.className = 'x';
     x.textContent = '×';
     x.title = '关闭';
+    x.setAttribute('aria-label', '关闭标签页');
     x.onclick = async (e) => {
       e.stopPropagation();
       await invoke('close_tab_cmd', { id: t.id }).catch(() => {});
@@ -217,6 +286,14 @@ function render() {
     };
     card.appendChild(x);
 
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.addEventListener('keydown', (ev) => {
+      if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === card) {
+        ev.preventDefault();
+        card.click();
+      }
+    });
     card.onclick = async () => {
       await invoke('activate_tab', { id: t.id }).catch(() => {});
       close();
@@ -227,6 +304,11 @@ function render() {
   const plus = document.createElement('div');
   plus.className = 'card plus';
   plus.textContent = '＋ 新建标签页';
+  plus.setAttribute('role', 'button');
+  plus.tabIndex = 0;
+  plus.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); plus.click(); }
+  });
   plus.onclick = async () => { await invoke('new_tab').catch(() => {}); close(); };
   grid.appendChild(plus);
 
@@ -252,15 +334,22 @@ $('#q').addEventListener('keydown', (e) => {
   }
 });
 $('#close-all').onclick = async () => {
+  if (!(await askConfirm('确定关闭当前工作区的全部标签页吗？此操作不可撤销。'))) return;
   // 一次性关闭当前工作区全部标签并只开一个内置新标签页。
   // 不能先 close_tabs 再 open_internal：close_tabs 每关一个活动标签都会补一个元宝搜索页，
   // 面板再开一个新标签页，结果就是两个标签（用户截图反馈的问题）。
-  await invoke('close_all_tabs_and_newtab').catch(() => {});
+  try { await invoke('close_all_tabs_and_newtab'); }
+  catch (e) { return; }  // 失败时保留面板，让用户看到还没关掉
   await reload();
   close();
 };
 $('#new-tab').onclick = async () => { await invoke('new_tab').catch(() => {}); close(); };
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  // 确认框打开时 Esc 只关对话框（askConfirm 自带处理），不关面板
+  if (document.getElementById('ask-confirm-mask')) { e.preventDefault(); return; }
+  close();
+});
 
 reload().then(() => $('#q').focus());
 </script>

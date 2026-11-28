@@ -8,8 +8,24 @@
   --accent: #10b981; --accent-deep: #0b8f66;
   --panel: #ffffff; --bg: #f6f7f9; --hover: rgba(17,24,39,.06);
   --border: rgba(17,24,39,.10); --divider: rgba(17,24,39,.07);
-  --text: #1f2329; --text-dim: #7b8794;
+  --text: #1f2329; --text-dim: #6b7785; --danger: #ef4444;
+  --shadow-sm: 0 1px 3px rgba(16,24,40,.10);
+  --shadow-md: 0 6px 20px rgba(16,24,40,.12);
 }
+/* 深色主题：浮层跟随 chrome 主题（由脚本读取 get_settings 设置 data-theme） */
+:root[data-theme="dark"] {
+  --panel: #262a31; --bg: #1d2025; --hover: rgba(255,255,255,.08);
+  --divider: rgba(255,255,255,.09); --border: rgba(255,255,255,.12);
+  --text: #e6e8eb; --text-dim: #98a2b3; --danger: #f87171;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+}
+/* 强调色四套（与 style.css 保持一致；浮层独立 webview 需自带规则） */
+:root[data-accent="purple"] { --accent: #8b5cf6; --accent-deep: #6d4ff5; }
+:root[data-accent="blue"]   { --accent: #3b82f6; --accent-deep: #2f6fe0; }
+:root[data-accent="orange"] { --accent: #f59e0b; --accent-deep: #d97706; }
+:root[data-accent="green"]  { --accent: #10b981; --accent-deep: #0b8f66; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   background: transparent;
@@ -27,11 +43,11 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 14px 40px rgba(16,24,40,.20);
+  box-shadow: var(--shadow-md);
 }
 .cap {
   padding: 8px 14px 4px;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--text-dim);
   letter-spacing: .3px;
 }
@@ -44,14 +60,14 @@ html, body {
   padding: 0 8px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 .item:hover, .item.on { background: var(--hover); }
 .item .fav {
   width: 16px; height: 16px; border-radius: 4px;
   background: var(--bg);
   display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 700; color: var(--accent-deep);
+  font-size: 11px; font-weight: 700; color: var(--accent-deep);
   overflow: hidden; flex-shrink: 0;
 }
 .item .fav img { width: 14px; height: 14px; object-fit: contain; }
@@ -62,10 +78,19 @@ html, body {
   direction: rtl; text-align: left; flex-shrink: 0;
 }
 .item .tag {
-  font-size: 10px; color: var(--accent-deep);
+  font-size: 11px; color: var(--accent-deep);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: 5px; padding: 1px 5px; flex-shrink: 0;
 }
+.item .del {
+  flex-shrink: 0; width: 18px; height: 18px; line-height: 16px;
+  text-align: center; border-radius: 5px; color: var(--text-dim);
+  font-size: 16px; opacity: 0; transition: opacity .12s;
+}
+.item:hover .del, .item.on .del, .item .del:focus { opacity: 1; }
+.item .del:hover { background: var(--hover); color: var(--danger, #ef4444); }
+/* 键盘可达：焦点轮廓与删除按钮聚焦时显形 */
+.item:focus-visible, .foot .clear-history:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: -1px; }
 .foot {
   display: flex; align-items: center; gap: 12px;
   padding: 6px 14px;
@@ -76,31 +101,99 @@ html, body {
   flex-shrink: 0;
 }
 .foot kbd {
-  font-family: inherit; font-size: 10px;
+  font-family: inherit; font-size: 11px;
   border: 1px solid var(--border); border-radius: 4px;
   padding: 0 4px; background: #fff;
 }
+.foot .clear-history {
+  margin-left: auto; cursor: pointer; color: var(--text-dim);
+  padding: 1px 5px; border-radius: 4px; transition: color .12s, background .12s;
+}
+.foot .clear-history:hover { color: var(--danger); background: var(--hover); }
+.foot .clear-history.armed { color: var(--danger); font-weight: 600; }
+:root[data-theme="dark"] .foot kbd { background: #3a3f47; }
 .empty { padding: 18px; text-align: center; color: var(--text-dim); font-size: 12px; }
+.qb-toast {
+  position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
+  background: rgba(20,26,33,.9); color: #fff;
+  font-size: 12px; padding: 5px 12px; border-radius: 999px;
+  opacity: 0; transition: opacity .16s ease; pointer-events: none; z-index: 10;
+}
+.qb-toast.show { opacity: 1; }
+:root[data-theme="dark"] .qb-toast { background: rgba(240,244,248,.92); color: #1f2329; }
 </style>
 </head>
 <body>
 <div class="card">
   <div class="cap" id="cap">最近访问</div>
   <div class="list" id="list"></div>
-  <div class="foot"><span><kbd>回车</kbd> 直接搜索</span><span>点击结果打开</span><span style="margin-left:auto"><kbd>Esc</kbd> 关闭</span></div>
+  <div class="foot"><span><kbd>回车</kbd> 直接搜索 / 打开选中项</span><span>点击结果打开</span><span class="clear-history" id="clear-history" role="button" tabindex="0" title="删除全部浏览历史">清除历史</span><span><kbd>Esc</kbd> 关闭</span></div>
 </div>
+<div class="qb-toast" id="qb-toast"></div>
 <script>
+// 跟随 chrome 主题（浮层独立 webview，需自行读取设置）
+try {
+  const core = window.__TAURI__.core;
+  core.invoke('get_settings').then(s => {
+    if (s && (s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+    document.documentElement.dataset.accent = (s && s.accent) || 'green';
+  }).catch(() => {});
+} catch {}
+
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 const $ = (s) => document.querySelector(s);
 
+// 导航失败提示：不再静默吞掉异常
+let qbToastTimer = null;
+function qbToast(msg) {
+  const el = $('#qb-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(qbToastTimer);
+  qbToastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
 let history = [];
 let bookmarks = [];
 let q = '';
+let sel = -1;   // 键盘选中项下标（-1 = 无选中，回车直接搜索）
+
+// 选中态同步给 chrome（地址栏回车时判断「打开选中项」还是「直接搜索」）
+function emitSel() {
+  try { window.__TAURI__.event.emit('quickbar-sel', sel); } catch {}
+}
+function itemEls() { return [...document.querySelectorAll('#list .item')]; }
+function setSel(i) {
+  const els = itemEls();
+  if (!els.length) { sel = -1; emitSel(); return; }
+  sel = Math.max(-1, Math.min(i, els.length - 1));
+  els.forEach((el, idx) => el.classList.toggle('on', idx === sel));
+  if (sel >= 0) els[sel].scrollIntoView({ block: 'nearest' });
+  emitSel();
+}
+// chrome（地址栏）转发来的按键：方向键选中、回车打开
+listen('quickbar-key', (ev) => {
+  const k = String(ev.payload || '');
+  const n = itemEls().length;
+  if (!n) return;
+  if (k === 'ArrowDown') setSel(sel + 1 >= n ? 0 : sel + 1);
+  else if (k === 'ArrowUp') setSel(sel <= 0 ? n - 1 : sel - 1);
+  else if (k === 'Enter' && sel >= 0) {
+    const el = itemEls()[sel];
+    if (el) el.click();
+  }
+});
 
 function hostOf(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
 }
+
+// favicon 内存缓存：host -> 'ok' | 'fail'（成功/失败都缓存，避免重复请求）
+const FAVICON_CACHE = new Map();
 
 function render() {
   const kw = q.trim().toLowerCase();
@@ -109,12 +202,12 @@ function render() {
   const pool = [];
   const seen = new Set();
   for (const b of bookmarks) {
-    pool.push({ title: b.title || hostOf(b.url), url: b.url, tag: '书签' });
+    pool.push({ title: b.title || hostOf(b.url), url: b.url, tag: '书签', kind: 'bookmark' });
     seen.add(b.url);
   }
   for (const h of history) {
     if (seen.has(h.url)) continue;
-    pool.push({ title: h.title || hostOf(h.url), url: h.url, tag: '' });
+    pool.push({ title: h.title || hostOf(h.url), url: h.url, tag: '', kind: 'history' });
     seen.add(h.url);
     if (pool.length > 200) break;
   }
@@ -131,6 +224,8 @@ function render() {
 
   const box = $('#list');
   box.innerHTML = '';
+  sel = -1;   // 列表重建后清掉键盘选中，回车回到「直接搜索」
+  emitSel();
   if (!list.length) {
     box.innerHTML = '<div class="empty">没有匹配的记录，回车直接用默认引擎搜索</div>';
     return;
@@ -138,21 +233,51 @@ function render() {
   for (const it of list) {
     const el = document.createElement('div');
     el.className = 'item';
-    el.innerHTML = '<span class="fav"></span><span class="t"></span><span class="u"></span><span class="tag"></span>';
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.innerHTML = '<span class="fav"></span><span class="t"></span><span class="u"></span><span class="tag"></span><span class="del"></span>';
     const host = hostOf(it.url);
     const fav = el.querySelector('.fav');
     fav.textContent = host ? host.charAt(0).toUpperCase() : '·';
-    const img = document.createElement('img');
-    img.src = `https://${host}/favicon.ico`;
-    img.onload = () => { if (img.naturalWidth > 1) { fav.textContent = ''; fav.appendChild(img); } };
+    // favicon 内存缓存：失败过的 host 不再重复请求（列表每次 render 都会重建）
+    if (host && FAVICON_CACHE.get(host) !== 'fail') {
+      const img = document.createElement('img');
+      img.src = `https://${host}/favicon.ico`;
+      img.onload = () => { FAVICON_CACHE.set(host, 'ok'); if (img.naturalWidth > 1) { fav.textContent = ''; fav.appendChild(img); } };
+      img.onerror = () => FAVICON_CACHE.set(host, 'fail');
+    }
     el.querySelector('.t').textContent = it.title;
     el.querySelector('.u').textContent = host;
     el.querySelector('.tag').textContent = it.tag || '';
+    // 历史项提供逐条删除（书签项不删，避免误把书签当历史清掉）
+    const del = el.querySelector('.del');
+    if (it.kind === 'history') {
+      del.textContent = '×';
+      del.title = '从历史中删除';
+      del.setAttribute('role', 'button');
+      del.setAttribute('aria-label', '从历史中删除');
+      del.tabIndex = 0;
+      const doDel = (ev) => {
+        ev.stopPropagation();
+        invoke('remove_history_entry', { url: it.url }).then(() => {
+          history = history.filter(h => h.url !== it.url);
+          qbToast('已从历史中删除');
+          render();
+        }).catch(() => qbToast('删除失败，请重试'));
+      };
+      del.onclick = doDel;
+      del.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); doDel(ev); } };
+    }
     // 先导航再关自己：反过来会把 navigage 这条 IPC 一起带走（webview 已销毁）
     el.onclick = async () => {
-      try { await invoke('navigate', { input: it.url }); } catch {}
+      try { await invoke('navigate', { input: it.url }); }
+      catch (err) { qbToast('打开失败，请重试'); }
       invoke('close_overlay').catch(() => {});
     };
+    // 键盘激活（Enter/Space）
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click(); }
+    });
     box.appendChild(el);
   }
   fitHeight();
@@ -188,6 +313,34 @@ async function refresh() {
     bookmarks = (st && st.bookmarks) || [];
   } catch {}
 }
+
+// 清除全部历史：二次确认，避免误点清空
+let clearArmed = false;
+let clearArmTimer = null;
+$('#clear-history').onclick = () => {
+  const btn = $('#clear-history');
+  if (!clearArmed) {
+    clearArmed = true;
+    btn.textContent = '再点一次确认';
+    btn.classList.add('armed');
+    clearTimeout(clearArmTimer);
+    clearArmTimer = setTimeout(() => {
+      clearArmed = false;
+      btn.textContent = '清除历史';
+      btn.classList.remove('armed');
+    }, 3000);
+    return;
+  }
+  clearTimeout(clearArmTimer);
+  clearArmed = false;
+  btn.textContent = '清除历史';
+  btn.classList.remove('armed');
+  invoke('clear_history').then(() => {
+    history = [];
+    qbToast('浏览历史已清除');
+    render();
+  }).catch(() => qbToast('清除失败，请重试'));
+};
 
 refresh().then(render);
 </script>

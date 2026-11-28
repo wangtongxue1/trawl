@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pw-confirm-insecure"
+description = "Enables the pw_confirm_insecure command without any pre-configured scope."
+commands.allow = ["pw_confirm_insecure"]
+
+[[permission]]
+identifier = "deny-pw-confirm-insecure"
+description = "Denies the pw_confirm_insecure command without any pre-configured scope."
+commands.deny = ["pw_confirm_insecure"]

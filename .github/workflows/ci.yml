@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read   # 纯检查任务，只读即可（不推送日志分支）
 
 jobs:
   check:

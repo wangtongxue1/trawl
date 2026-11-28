@@ -7,12 +7,16 @@
 :root {
   --panel: #ffffff; --hover: rgba(17,24,39,.06);
   --border: rgba(17,24,39,.10); --divider: rgba(17,24,39,.07);
-  --text: #1f2329; --text-dim: #9aa4b0;
+  --text: #1f2329; --text-dim: #6b7785;
+  --shadow-sm: 0 1px 3px rgba(16,24,40,.10);
+  --shadow-md: 0 6px 20px rgba(16,24,40,.12);
 }
 :root[data-theme="dark"] {
   --panel: #23272e; --hover: rgba(255,255,255,.09);
   --border: rgba(255,255,255,.12); --divider: rgba(255,255,255,.08);
-  --text: #e6e8eb; --text-dim: #7d8792;
+  --text: #e6e8eb; --text-dim: #98a2b3;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { background: transparent; }
@@ -26,22 +30,24 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 10px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.08);
+  box-shadow: var(--shadow-md);
   padding: 6px;
 }
 .item {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   min-height: 34px; padding: 0 10px;
-  border-radius: 7px; font-size: 12.5px; cursor: pointer;
+  border-radius: 7px; font-size: 12px; cursor: pointer;
   white-space: nowrap;
 }
 .item:hover:not(.disabled) { background: var(--hover); }
 .item.disabled { opacity: .38; cursor: default; }
 .item .k {
   margin-left: auto; padding-left: 22px;
-  color: var(--text-dim); font-size: 10.5px;
+  color: var(--text-dim); font-size: 11px;
 }
 .sep { height: 1px; background: var(--divider); margin: 5px 8px; }
+/* 键盘焦点可见 */
+:focus-visible { outline: 2px solid var(--accent, #10b981); outline-offset: -1px; }
 </style>
 </head>
 <body>
@@ -54,6 +60,7 @@ let items = [];
 function tryTheme() {
   invoke('get_settings').then((s) => {
     document.documentElement.dataset.theme = s.theme || 'light';
+    document.documentElement.dataset.accent = (s && s.accent) || 'green';
   }).catch(() => {});
 }
 
@@ -74,6 +81,8 @@ function render() {
     }
     const el = document.createElement('div');
     el.className = 'item' + (it.disabled ? ' disabled' : '');
+    el.setAttribute('role', 'menuitem');
+    el.tabIndex = it.disabled ? -1 : 0;
     const label = document.createElement('span');
     label.textContent = it.label;
     el.appendChild(label);
@@ -83,7 +92,18 @@ function render() {
       k.textContent = it.key;
       el.appendChild(k);
     }
-    if (!it.disabled) el.onclick = () => pick(it.action);
+    if (!it.disabled) {
+      el.onclick = () => pick(it.action);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          const all = [...card.querySelectorAll('.item:not(.disabled)')];
+          const i = all.indexOf(el);
+          const next = all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length];
+          if (next) { e.preventDefault(); next.focus(); }
+        }
+      });
+    }
     card.appendChild(el);
   }
   requestAnimationFrame(() => requestAnimationFrame(fit));

@@ -267,6 +267,12 @@
           "markdownDescription": "Enables the close_workspace command without any pre-configured scope."
         },
         {
+          "description": "Enables the create_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-folder",
+          "markdownDescription": "Enables the create_folder command without any pre-configured scope."
+        },
+        {
           "description": "Enables the ctxmenu_pick command without any pre-configured scope.",
           "type": "string",
           "const": "allow-ctxmenu-pick",
@@ -429,6 +435,18 @@
           "markdownDescription": "Enables the mob_switch_tab command without any pre-configured scope."
         },
         {
+          "description": "Enables the move_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-move-tab",
+          "markdownDescription": "Enables the move_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the move_tab_to_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-move-tab-to-folder",
+          "markdownDescription": "Enables the move_tab_to_folder command without any pre-configured scope."
+        },
+        {
           "description": "Enables the nav_back command without any pre-configured scope.",
           "type": "string",
           "const": "allow-nav-back",
@@ -579,6 +597,18 @@
           "markdownDescription": "Enables the pw_add command without any pre-configured scope."
         },
         {
+          "description": "Enables the pw_check command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pw-check",
+          "markdownDescription": "Enables the pw_check command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the pw_confirm_insecure command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pw-confirm-insecure",
+          "markdownDescription": "Enables the pw_confirm_insecure command without any pre-configured scope."
+        },
+        {
           "description": "Enables the pw_del command without any pre-configured scope.",
           "type": "string",
           "const": "allow-pw-del",
@@ -597,6 +627,12 @@
           "markdownDescription": "Enables the pw_list command without any pre-configured scope."
         },
         {
+          "description": "Enables the pw_reveal command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-pw-reveal",
+          "markdownDescription": "Enables the pw_reveal command without any pre-configured scope."
+        },
+        {
           "description": "Enables the pw_update command without any pre-configured scope.",
           "type": "string",
           "const": "allow-pw-update",
@@ -607,6 +643,12 @@
           "type": "string",
           "const": "allow-remove-bookmark",
           "markdownDescription": "Enables the remove_bookmark command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the remove_bookmarks_batch command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-remove-bookmarks-batch",
+          "markdownDescription": "Enables the remove_bookmarks_batch command without any pre-configured scope."
         },
         {
           "description": "Enables the rename_folder command without any pre-configured scope.",
@@ -867,6 +909,12 @@
           "markdownDescription": "Denies the close_workspace command without any pre-configured scope."
         },
         {
+          "description": "Denies the create_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-folder",
+          "markdownDescription": "Denies the create_folder command without any pre-configured scope."
+        },
+        {
           "description": "Denies the ctxmenu_pick command without any pre-configured scope.",
           "type": "string",
           "const": "deny-ctxmenu-pick",
@@ -1029,6 +1077,18 @@
           "markdownDescription": "Denies the mob_switch_tab command without any pre-configured scope."
         },
         {
+          "description": "Denies the move_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-move-tab",
+          "markdownDescription": "Denies the move_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the move_tab_to_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-move-tab-to-folder",
+          "markdownDescription": "Denies the move_tab_to_folder command without any pre-configured scope."
+        },
+        {
           "description": "Denies the nav_back command without any pre-configured scope.",
           "type": "string",
           "const": "deny-nav-back",
@@ -1179,6 +1239,18 @@
           "markdownDescription": "Denies the pw_add command without any pre-configured scope."
         },
         {
+          "description": "Denies the pw_check command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pw-check",
+          "markdownDescription": "Denies the pw_check command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the pw_confirm_insecure command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pw-confirm-insecure",
+          "markdownDescription": "Denies the pw_confirm_insecure command without any pre-configured scope."
+        },
+        {
           "description": "Denies the pw_del command without any pre-configured scope.",
           "type": "string",
           "const": "deny-pw-del",
@@ -1197,6 +1269,12 @@
           "markdownDescription": "Denies the pw_list command without any pre-configured scope."
         },
         {
+          "description": "Denies the pw_reveal command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-pw-reveal",
+          "markdownDescription": "Denies the pw_reveal command without any pre-configured scope."
+        },
+        {
           "description": "Denies the pw_update command without any pre-configured scope.",
           "type": "string",
           "const": "deny-pw-update",
@@ -1207,6 +1285,12 @@
           "type": "string",
           "const": "deny-remove-bookmark",
           "markdownDescription": "Denies the remove_bookmark command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the remove_bookmarks_batch command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-remove-bookmarks-batch",
+          "markdownDescription": "Denies the remove_bookmarks_batch command without any pre-configured scope."
         },
         {
           "description": "Denies the rename_folder command without any pre-configured scope.",

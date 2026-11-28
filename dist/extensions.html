@@ -7,17 +7,20 @@
 :root {
   --accent: #10b981; --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   --bg: #f5f7f9; --panel: #ffffff; --border: #e6eaee; --border-strong: #d6dde3;
-  --text: #1f2937; --text-2: #5a6672; --text-3: #98a2ae;
+  --text: #1f2937; --text-2: #5a6672; --text-3: #6b7785;
   --hover: #f1f5f7; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 18px rgba(16,24,40,.05);
+  --danger: #ef4444;
 }
 :root[data-theme="dark"] {
   --bg: #15181c; --panel: #1e2228; --border: #2c323a; --border-strong: #3a424c;
   --text: #e8ebef; --text-2: #a9b3be; --text-3: #76818d;
   --hover: #272c33; --shadow: 0 8px 24px rgba(0,0,0,.28);
+  --danger: #f87171;
 }
-:root[data-accent="purple"] { --accent: #8b5cf6; }
-:root[data-accent="blue"]   { --accent: #3b82f6; }
-:root[data-accent="orange"] { --accent: #f59e0b; }
+:root[data-accent="purple"] { --accent: #8b5cf6; --accent-deep: #6d4ff5; }
+:root[data-accent="blue"]   { --accent: #3b82f6; --accent-deep: #2f6fe0; }
+:root[data-accent="orange"] { --accent: #f59e0b; --accent-deep: #d97706; }
+:root[data-accent="green"]  { --accent: #10b981; --accent-deep: #0b8f66; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -25,19 +28,19 @@ body {
   background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px;
 }
 svg.sprite { display: none; }
-.ic { width: 17px; height: 17px; flex-shrink: 0; display: block;
-  stroke: currentColor; fill: none; stroke-width: 1.7;
+.ic { width: 16px; height: 16px; flex-shrink: 0; display: block;
+  stroke: currentColor; fill: none; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- 顶栏 ---------- */
 .topbar {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 12px;
   height: 56px; padding: 0 22px;
   background: var(--panel); border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 5;
 }
 .topbar .logo { width: 26px; height: 26px; border-radius: 7px; }
-.topbar h1 { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.topbar h1 { font-size: 16px; font-weight: 700; white-space: nowrap; }
 .search-wrap {
   flex: 1; max-width: 520px; margin: 0 auto;
   position: relative;
@@ -47,10 +50,10 @@ svg.sprite { display: none; }
   width: 100%; height: 34px; padding: 0 12px 0 34px;
   border: 1px solid transparent; border-radius: 9px;
   background: var(--hover); color: var(--text);
-  font-family: inherit; font-size: 12.5px; outline: none;
+  font-family: inherit; font-size: 12px; outline: none;
 }
 .search-wrap input:focus { background: var(--panel); border-color: var(--accent); }
-.dev-mode { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+.dev-mode { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
 
 /* ---------- 开关 ---------- */
 .switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
@@ -67,7 +70,7 @@ svg.sprite { display: none; }
 
 /* ---------- 操作条 ---------- */
 .actionbar {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   padding: 14px 22px 4px;
 }
 .chip {
@@ -84,9 +87,9 @@ svg.sprite { display: none; }
 .body { display: flex; align-items: flex-start; gap: 26px; padding: 12px 22px 60px; }
 .sidenav { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
 .sidenav .item {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   height: 36px; padding: 0 12px; border-radius: 9px;
-  color: var(--text-2); font-size: 12.5px; cursor: pointer;
+  color: var(--text-2); font-size: 12px; cursor: pointer;
 }
 .sidenav .item:hover { background: var(--hover); color: var(--text); }
 .sidenav .item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -99,14 +102,14 @@ svg.sprite { display: none; }
   display: flex; align-items: center; justify-content: space-between;
   font-size: 13px; font-weight: 600; margin: 6px 0 12px;
 }
-.sec-title .sub { font-size: 11.5px; color: var(--text-3); font-weight: 400; }
+.sec-title .sub { font-size: 12px; color: var(--text-3); font-weight: 400; }
 .grid {
-  display: grid; gap: 14px;
+  display: grid; gap: 12px;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   margin-bottom: 26px;
 }
 .card {
-  background: var(--panel); border: 1px solid var(--border); border-radius: 13px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: var(--shadow); padding: 14px 15px 12px;
   display: flex; flex-direction: column; gap: 9px;
   transition: border-color .14s ease, transform .14s ease;
@@ -118,28 +121,28 @@ svg.sprite { display: none; }
   display: grid; place-items: center;
   background: var(--accent-soft); color: var(--accent);
 }
-.ex-icon .ic { width: 19px; height: 19px; }
+.ex-icon .ic { width: 18px; height: 18px; }
 .ex-icon.local { background: var(--hover); color: var(--text-2); }
 .card-title { flex: 1; min-width: 0; }
 .card-title .n { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-.card-title .n .ver { font-size: 10.5px; color: var(--text-3); font-weight: 400; }
+.card-title .n .ver { font-size: 11px; color: var(--text-3); font-weight: 400; }
 .card-title .tag {
-  font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  font-size: 11px; padding: 1px 6px; border-radius: 999px;
   background: var(--accent-soft); color: var(--accent); font-weight: 600;
 }
-.card-desc { font-size: 11.5px; color: var(--text-2); line-height: 1.6; min-height: 36px; }
+.card-desc { font-size: 12px; color: var(--text-2); line-height: 1.6; min-height: 36px; }
 .card-id {
-  font-size: 10.5px; color: var(--text-3); font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px; color: var(--text-3); font-family: ui-monospace, Consolas, monospace;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .card-foot { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
 .btn-xs {
-  height: 27px; padding: 0 11px; border-radius: 7px;
+  height: 27px; padding: 0 11px; border-radius: 8px;
   border: 1px solid var(--border-strong); background: transparent; color: var(--text-2);
-  font-family: inherit; font-size: 11.5px; cursor: pointer;
+  font-family: inherit; font-size: 12px; cursor: pointer;
 }
 .btn-xs:hover { border-color: var(--accent); color: var(--accent); }
-.btn-xs.danger:hover { border-color: #e0533d; color: #e0533d; }
+.btn-xs.danger:hover { border-color: var(--danger); color: var(--danger); }
 .card-foot .spacer { flex: 1; }
 .empty { padding: 28px; text-align: center; color: var(--text-3); font-size: 12px;
   border: 1px dashed var(--border-strong); border-radius: 12px; }
@@ -148,15 +151,9 @@ svg.sprite { display: none; }
 .store-item .lnk { color: #2f6fd6; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: transparent; transition: text-decoration-color .12s ease; }
 .store-item:hover .lnk { text-decoration-color: #2f6fd6; }
 .store-item { cursor: pointer; }
-/* ---------- 侧栏商店入口 ---------- */
-.store-item .store-dot {
-  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-}
-
 /* ---------- 快捷键 ---------- */
-.kbd-list { background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 4px 16px; }
-.kbd-line { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+.kbd-list { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 4px 16px; }
+.kbd-line { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 12px; }
 .kbd-line:first-child { border-top: none; }
 .kbd-line .lbl { flex: 1; }
 kbd {
@@ -175,12 +172,12 @@ kbd {
 .mask.hidden { display: none; }
 .dialog {
   width: 400px; max-width: calc(100vw - 48px);
-  background: var(--panel); border-radius: 14px; padding: 20px 22px 16px;
-  box-shadow: 0 18px 48px rgba(16,24,40,.28);
+  background: var(--panel); border-radius: 16px; padding: 20px 22px 16px;
+  box-shadow: var(--shadow);
   animation: pop .14s ease-out;
 }
 @keyframes pop { from { transform: scale(.97); opacity: .6; } to { transform: scale(1); opacity: 1; } }
-.dialog h3 { font-size: 14.5px; margin-bottom: 8px; }
+.dialog h3 { font-size: 14px; margin-bottom: 8px; }
 .dialog p { font-size: 12px; color: var(--text-3); line-height: 1.7; margin-bottom: 12px; }
 .dialog input[type=text] {
   width: 100%; height: 34px; padding: 0 11px; margin-bottom: 14px;
@@ -188,7 +185,7 @@ kbd {
   background: var(--bg); color: var(--text); font-family: inherit; font-size: 12px; outline: none;
 }
 .dialog input[type=text]:focus { border-color: var(--accent); }
-.dialog .row-sw { display: flex; align-items: center; gap: 12px; padding: 9px 0; font-size: 12.5px; }
+.dialog .row-sw { display: flex; align-items: center; gap: 12px; padding: 9px 0; font-size: 12px; }
 .dialog .row-sw .d { flex: 1; }
 .dialog .row-sw .d small { display: block; color: var(--text-3); font-size: 11px; margin-top: 2px; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
@@ -198,7 +195,7 @@ kbd {
 }
 .dialog .actions .ghost { border: 1px solid var(--border-strong); background: transparent; color: var(--text-2); }
 .dialog .actions .ok { border: none; background: var(--accent); color: #fff; }
-.dialog .actions .ok.danger { background: #e0533d; }
+.dialog .actions .ok.danger { background: var(--danger); }
 
 .toast {
   position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
@@ -238,7 +235,7 @@ kbd {
 
 <div class="actionbar">
   <button class="chip" id="btn-load" disabled><svg class="ic"><use href="#i-folder"/></svg>加载未打包的扩展程序</button>
-  <button class="chip" id="btn-update"><svg class="ic"><use href="#i-refresh"/></svg>更新</button>
+  <button class="chip" id="btn-update"><svg class="ic"><use href="#i-refresh"/></svg>刷新本地列表</button>
 </div>
 
 <div class="body">
@@ -246,33 +243,14 @@ kbd {
     <div class="item active" data-view="mine"><svg class="ic"><use href="#i-ext"/></svg>我的扩展程序</div>
     <div class="item" data-view="kbd"><svg class="ic"><use href="#i-kbd"/></svg>键盘快捷键</div>
     <div class="sep"></div>
-    <div class="hint" style="padding-bottom:2px">获取更多扩展程序</div>
+    <div class="hint" style="padding-bottom:2px">扩展兼容说明</div>
     <div class="item store-item" id="store-chrome">
-      <span class="store-dot" style="background:#fff;border:1px solid #e3e3e3">
-        <svg viewBox="0 0 48 48" width="18" height="18">
-          <path fill="#EA4335" d="M24 4c7.4 0 13.9 4 17.3 10H24a10 10 0 0 0-8.7 5.1L8.6 8.9A19.9 19.9 0 0 1 24 4z"/>
-          <path fill="#FBBC05" d="M41.3 14A20 20 0 0 1 24 44l6.6-11.5a10 10 0 0 0 .1-11.6l-6.7-6.9h17.3z"/>
-          <path fill="#34A853" d="M24 44A19.9 19.9 0 0 1 8.6 8.9l6.7 10.2A10 10 0 0 0 24 39.5c1.2 0 2.4-.2 3.4-.6L24 44z"/>
-          <circle cx="24" cy="24" r="11" fill="#fff"/>
-          <circle cx="24" cy="24" r="8.6" fill="#4285F4"/>
-        </svg>
-      </span>
       <span class="lnk">Chrome 应用商店</span>
     </div>
     <div class="item store-item" id="store-edge">
-      <span class="store-dot" style="background:#fff;border:1px solid #e3e3e3">
-        <svg viewBox="0 0 24 24" width="18" height="18">
-          <defs>
-            <linearGradient id="edge-swirl" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0" stop-color="#0d7fd4"/>
-              <stop offset="1" stop-color="#28c3a8"/>
-            </linearGradient>
-          </defs>
-          <path fill="url(#edge-swirl)" d="M21.7 17.1c-.3.7-1 2-2.4 3.3A8.7 8.7 0 0 1 12 22.8c-5 0-8.5-3.5-8.5-8.6 0-4.9 3.3-8.5 8-8.5 4.4 0 7.5 3 7.6 7.3 0 .5-.4 1.1-1 1.1H8.3c.2 2.5 2 4.1 4.6 4.1 2 0 3.6-.8 4.6-2.4.2-.3.5-.4.8-.3l3 .9c.3.1.5.4.4.7z"/>
-        </svg>
-      </span>
       <span class="lnk">Edge 扩展商店</span>
     </div>
+    <div class="hint" style="padding:6px 10px; line-height:1.65; font-size:11px">仅支持含 content_scripts 的本地扩展（开发者模式 → 加载未打包的扩展程序）。Chrome / Edge 商店扩展依赖的完整浏览器 API 不可用，商店链接仅供查看，无法在本产品安装运行。</div>
     <div class="sep"></div>
     <div class="hint" id="count-hint">内置插件随浏览器提供，开关即时生效。</div>
   </aside>
@@ -393,7 +371,8 @@ function persist() {
   call('save_extensions', { list: LIST });
 }
 
-function esc(s) { return String(s == null ? '' : s); }
+// esc() 已删除：全页无调用点，且动态文本都走 textContent（天然免转义），
+// 留一个「假装转义」的空壳反而危险。
 
 function buildCard(it) {
   const card = document.createElement('div');
@@ -494,7 +473,7 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add('on');
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => t.classList.remove('on'), 1800);
+  toast._t = setTimeout(() => t.classList.remove('on'), 2200);
 }
 
 /* ---------- 配置面板 ---------- */
@@ -589,7 +568,8 @@ const KBD = [
   ['下载内容', ['Ctrl', 'J']],
   ['重新加载', ['Ctrl', 'R']],
   ['扩展程序', ['Ctrl', 'Shift', 'E']],
-  ['标签列表', ['Ctrl', 'Shift', 'T']],
+  ['标签列表', ['Ctrl', 'Shift', 'L']],
+  ['恢复上次关闭的标签', ['Ctrl', 'Shift', 'T']],
   ['命令面板', ['Ctrl', 'K']],
   ['页内查找', ['Ctrl', 'F']],
   ['放大 / 缩小页面', ['Ctrl', '= / -']],
@@ -622,18 +602,26 @@ document.getElementById('devmode').addEventListener('change', (e) => {
   toast(devMode ? '开发者模式已开启' : '开发者模式已关闭');
 });
 document.getElementById('btn-load').onclick = loadUnpacked;
-// Chrome 应用商店 / Edge 扩展商店：新标签页打开
-document.getElementById('store-chrome').onclick = () => {
-  call('navigate_new_tab', { input: 'https://chromewebstore.google.com/' });
-  toast('已在新标签页打开 Chrome 应用商店');
-};
-document.getElementById('store-edge').onclick = () => {
-  call('navigate_new_tab', { input: 'https://microsoftedge.microsoft.com/addons' });
-  toast('已在新标签页打开 Edge 扩展商店');
-};
+// 商店入口先说明兼容性，避免误导用户以为可以安装并正常运行商店扩展
+function openStoreWithNotice(url, name) {
+  openDialog({
+    title: '扩展兼容说明',
+    desc: '本产品仅支持含 content_scripts 的本地扩展（开发者模式 → 加载未打包的扩展程序）。' +
+      name + '商店扩展依赖的完整浏览器 API 不可用，无法在本产品安装运行。仍要打开页面仅供查看吗？',
+    okText: '仍要打开',
+    onOk: () => {
+      call('navigate_new_tab', { input: url });
+      toast('已打开商店页面（仅供查看，本产品无法安装）');
+    },
+  });
+}
+document.getElementById('store-chrome').onclick = () =>
+  openStoreWithNotice('https://chromewebstore.google.com/', 'Chrome');
+document.getElementById('store-edge').onclick = () =>
+  openStoreWithNotice('https://microsoftedge.microsoft.com/addons', 'Edge');
 document.getElementById('btn-update').onclick = async () => {
   await loadList();
-  toast('已检查更新');
+  toast('已重新扫描本地扩展');
 };
 // 只给带 data-view 的导航项绑视图切换；商店入口（.store-item）没有 data-view，
 // 之前这里把它们的 onclick 一并覆盖掉，导致点击后什么都不会发生

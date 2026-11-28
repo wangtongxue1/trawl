@@ -21,6 +21,11 @@ const reportError = (msg) => { try { core.invoke('debug_msg', { msg }); } catch 
 window.addEventListener('error', (e) => reportError(`ERR ${e.message} @${e.filename}:${e.lineno}`));
 window.addEventListener('unhandledrejection', (e) => reportError(`REJ ${String(e.reason)}`));
 
+// P1-6 无障碍：纯图标按钮用 title 补 aria-label（显式可访问名）
+document.querySelectorAll('#chrome button[title]').forEach((b) => {
+  if (!b.hasAttribute('aria-label')) b.setAttribute('aria-label', b.getAttribute('title') || '');
+});
+
 const chromeEl = $('#chrome');
 const tabsEl = $('#tabs');
 const wsPill = $('#ws-pill');
@@ -45,6 +50,55 @@ let progressTimer = null;
 let editPoll = null;         // 编辑态焦点轮询（点页面时 blur 不一定送达）
 
 /* ==================== 小工具 ==================== */
+
+// 快捷键修饰键：macOS 用 ⌘(metaKey)，Windows/Linux 用 Ctrl(ctrlKey)。
+// 与 index.html / menu.html 的文案替换保持同一套平台判断。
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+/* ---- 前进/后退按钮可用性 ----
+ * 后端 state 不含 can_back/can_forward，这里按标签本地记录由 chrome 主动发起的导航，
+ * 渲染时据此设置按钮 disabled。页面内点链接的跳转 chrome 收不到，无法计入（见报告）。 */
+const navHistory = new Map();
+function navEntry(id) {
+  if (!navHistory.has(id)) navHistory.set(id, { stack: [], idx: -1 });
+  return navHistory.get(id);
+}
+function navPush(id, url) {
+  if (!id || !url) return;
+  const h = navEntry(id);
+  if (h.stack[h.idx] === url) return;
+  h.stack = h.stack.slice(0, h.idx + 1);
+  h.stack.push(url);
+  h.idx = h.stack.length - 1;
+  if (h.stack.length > 50) { h.stack.shift(); h.idx--; }
+}
+function navStep(id, delta) {
+  const h = navEntry(id);
+  const next = h.idx + delta;
+  if (next < 0 || next >= h.stack.length) return false;
+  h.idx = next;
+  return true;
+}
+function goBack() {
+  const a = activeTab();
+  if (a) navStep(a.id, -1);
+  invoke('nav_back');
+  render();
+}
+function goForward() {
+  const a = activeTab();
+  if (a) navStep(a.id, 1);
+  invoke('nav_forward');
+  render();
+}
+function updateNavButtons() {
+  const a = activeTab();
+  const h = a ? navEntry(a.id) : null;
+  // 还没有本地记录时，用当前 url 作为栈底（例如新打开的标签）
+  if (h && !h.stack.length && a && a.url) { h.stack = [a.url]; h.idx = 0; }
+  $('#btn-back').disabled = !(h && h.idx > 0);
+  $('#btn-fwd').disabled = !(h && h.idx < h.stack.length - 1);
+}
 
 function hostOf(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
@@ -76,6 +130,10 @@ function iconSource(host) {
   return { kind: 'remote', value: `https://${host}/favicon.ico` };
 }
 
+// favicon 内存缓存：host -> 'ok' | 'fail'。成功/失败都记，避免每次 render 都重新请求
+// （标签条重绘很频繁，同一 host 反复打 /favicon.ico 既慢又浪费）。
+const FAVICON_CACHE = new Map();
+
 /** 给容器塞入 favicon：优先本地真实图标，失败回退字母。返回字母元素供 onerror 用。 */
 function fillFavicon(box, host, letterEl, brandBg) {
   const src = iconSource(host);
@@ -93,10 +151,12 @@ function fillFavicon(box, host, letterEl, brandBg) {
     letterEl.style.display = 'none';
     box.appendChild(wrap);
   } else if (src.kind === 'remote') {
+    // 上次失败过的 host 不再重复请求，直接留字母占位
+    if (FAVICON_CACHE.get(host) === 'fail') return;
     const img = document.createElement('img');
     img.alt = ''; img.src = src.value; img.style.display = 'none';
-    img.onload = () => { if (img.naturalWidth > 1) { letterEl.style.display = 'none'; img.style.display = 'block'; } };
-    img.onerror = () => img.remove();
+    img.onload = () => { FAVICON_CACHE.set(host, 'ok'); if (img.naturalWidth > 1) { letterEl.style.display = 'none'; img.style.display = 'block'; } };
+    img.onerror = () => { FAVICON_CACHE.set(host, 'fail'); img.remove(); };
     box.appendChild(img);
   }
 }
@@ -151,6 +211,10 @@ function buildTabEl(tab, pinned) {
   el.dataset.pinned = pinned ? '1' : '0';
   el.dataset.tauriDragRegion = 'false';   // 标签本身可点，别被窗口拖拽吞掉
   el.title = tab.title || '新标签页';
+  // P1-6 无障碍：标签可键盘聚焦并用 Enter/Space 激活
+  el.setAttribute('role', 'tab');
+  el.tabIndex = 0;
+  el.setAttribute('aria-label', `标签页：${el.title}`);
 
   el.appendChild(buildFavicon(tab));
 
@@ -169,16 +233,21 @@ function buildTabEl(tab, pinned) {
 
   el.addEventListener('click', (e) => {
     if (e.altKey) { invoke('open_glance', { id: tab.id }); return; }
-    if (e.ctrlKey) {
+    // 多选修饰键：macOS 用 ⌘+点击，Windows 用 Ctrl+点击
+    if (IS_MAC ? e.metaKey : e.ctrlKey) {
       selectedTabs.has(tab.id) ? selectedTabs.delete(tab.id) : selectedTabs.add(tab.id);
       render();
       return;
     }
-    if (selectedTabs.size) { selectedTabs.clear(); render(); return; }
+    // 多选态下普通单击直接切到目标标签并清空选择，不再只清选择却不切标签
+    if (selectedTabs.size) { selectedTabs.clear(); render(); }
     invoke('activate_tab', { id: tab.id });
   });
   el.addEventListener('auxclick', (e) => {
     if (e.button === 1) { e.preventDefault(); invoke('close_tab_cmd', { id: tab.id }); }
+  });
+  el.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); }
   });
   el.addEventListener('contextmenu', (e) => { e.preventDefault(); showTabContextMenu(e, tab); });
 
@@ -238,15 +307,143 @@ function buildFolderChip(folder) {
     const dragId = e.dataTransfer.getData('text/trawl-tab');
     if (dragId) invoke('move_tab_to_folder', { id: dragId, folderId: folder.id });
   });
+  // 文件夹右键：重命名（后端 rename_folder 命令已登记 ACL）
+  chip.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openCtxMenu(e, [
+      { label: '重命名文件夹', run: async () => {
+        const name = await promptBox('重命名文件夹', folder.name);
+        if (name && name.trim()) invoke('rename_folder', { id: folder.id, name: name.trim() });
+      } },
+    ], 180);
+  });
   return chip;
+}
+
+/* ==================== 书签栏渲染 ==================== */
+
+// 构造单个书签项（带 favicon）
+function buildBmItem(b) {
+  const el = document.createElement('div');
+  el.className = 'bm-item';
+  el.dataset.bmUrl = b.url;  // 右键菜单要按真实 url 操作，不能用 title（M8 修复）
+  el.title = b.folder ? `${b.folder} / ${b.title}\n${b.url}` : `${b.title}\n${b.url}`;
+  // P1-6 无障碍：书签栏项可键盘聚焦激活
+  el.setAttribute('role', 'link');
+  el.tabIndex = 0;
+  el.setAttribute('aria-label', `打开书签：${b.title || hostOf(b.url)}`);
+  const fav = document.createElement('span');
+  fav.className = 'bm-fav';
+  const host = hostOf(b.url);
+  const letter = document.createElement('span');
+  letter.className = 'tab-letter';
+  letter.textContent = host ? host.charAt(0).toUpperCase() : '★';
+  fav.appendChild(letter);
+  el.appendChild(fav);
+  const name = document.createElement('span');
+  name.className = 'b-name';
+  name.textContent = b.title || host;
+  el.appendChild(name);
+  if (host) fillFavicon(fav, host, letter, '#24292f');
+  el.onclick = () => invoke('navigate', { input: b.url })
+    .then(() => navPush(state.activeTab, b.url))
+    .catch((err) => {
+      reportError(`navigate FAILED: ${String(err)}`);
+      chromeToast('打开书签失败，请检查网址');
+    });
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+  });
+  return el;
+}
+
+// 构造文件夹 chip：点击打开书签浮层面板（面板内按文件夹分组）
+function buildBmFolderChip(name, count) {
+  const el = document.createElement('div');
+  el.className = 'bm-folder';
+  el.innerHTML = `<span class="bf-ico">📁</span><span class="bf-name"></span><span class="bf-count">${count}</span>`;
+  el.querySelector('.bf-name').textContent = name;
+  el.title = `${name}（${count} 个书签，点击查看）`;
+  el.onclick = () => invoke('ui_action', { what: 'bookmarks' });
+  return el;
+}
+
+// 渲染书签栏：分组 + 溢出折叠测量
+function renderBookmarkBar() {
+  const bmSig = state.bookmarks.map(b => `${b.url}|${b.title}|${b.folder || ''}`).join('|')
+    + '@' + bookmarkbarEl.clientWidth;
+  if (bookmarkbarEl.dataset.sig === bmSig) return;
+  bookmarkbarEl.dataset.sig = bmSig;
+  bookmarkbarEl.innerHTML = '';
+
+  const roots = state.bookmarks.filter(b => !b.folder);
+  const folderMap = new Map();
+  for (const b of state.bookmarks) {
+    if (!b.folder) continue;
+    const top = b.folder.split('/')[0];
+    if (!folderMap.has(top)) folderMap.set(top, 0);
+    folderMap.set(top, folderMap.get(top) + 1);
+  }
+
+  const items = [];
+  for (const b of roots) items.push(buildBmItem(b));
+  for (const [name, count] of folderMap) items.push(buildBmFolderChip(name, count));
+  const more = document.createElement('button');
+  more.className = 'bm-more';
+  more.id = 'bm-more-btn';
+
+  if (!items.length) {
+    more.textContent = '添加书签';
+  }
+  for (const el of items) bookmarkbarEl.appendChild(el);
+  bookmarkbarEl.appendChild(more);
+
+  // 溢出折叠：测量每项宽度，放不下的隐藏，更多按钮显示隐藏数量
+  // clientWidth=0 表示尚未布局（首帧），此时不折叠，等下一次 render 重算
+  if (items.length && bookmarkbarEl.clientWidth > 0) {
+    const avail = bookmarkbarEl.clientWidth - 16; // 减去左右 padding
+    let used = more.offsetWidth + 8;
+    let hidden = 0;
+    for (const el of items) {
+      used += el.offsetWidth + 1;
+      if (used > avail) { el.style.display = 'none'; hidden++; }
+    }
+    more.textContent = hidden ? `更多 ${hidden}` : '全部书签';
+    more.title = hidden ? `${hidden} 个书签已折叠，点击在书签面板查看` : '书签面板 (Ctrl+Shift+B)';
+  }
+  more.onclick = () => invoke('ui_action', { what: 'bookmarks' });
+  // 首帧若尚未布局（clientWidth=0），下一帧补一次折叠计算
+  if (items.length && !bookmarkbarEl.clientWidth) {
+    requestAnimationFrame(() => { bookmarkbarEl.dataset.sig = ''; renderBookmarkBar(); });
+  }
 }
 
 /* ==================== 渲染 ==================== */
 
 function tabsSignature() {
-  return wsTabs().map(t => `${t.id}:${t.pinned}:${t.folderId}:${t.title}:${t.loading}:${t.id === state.activeTab}:${selectedTabs.has(t.id)}`)
+  // 签名不含 title：标题变化很频繁（每页导航都变），放进签名会导致整条标签栏全量重建，
+  // 悬停/拖拽态全丢。标题改动由 render() 里的轻量同步单独更新文本。
+  return wsTabs().map(t => `${t.id}:${t.pinned}:${t.folderId}:${t.loading}:${t.id === state.activeTab}:${selectedTabs.has(t.id)}`)
     .concat(state.folders.map(f => `f${f.id}:${f.name}:${expandedFolders.has(f.id)}`))
     .join('|');
+}
+
+/** 签名不变时的标题轻量同步：只改文本节点，不重建 DOM（避免丢交互态） */
+function syncTabTitles() {
+  for (const el of tabsEl.children) {
+    const id = el.dataset.id;
+    if (!id) continue;
+    const tab = state.tabs.find(t => t.id === id);
+    if (!tab) continue;
+    const text = tab.title || '新标签页';
+    if (el.title !== text) {
+      el.title = text;
+      el.setAttribute('aria-label', `标签页：${text}`);
+      const t = el.querySelector('.tab-title');
+      if (t && t.textContent !== text) t.textContent = text;
+    }
+  }
 }
 
 function render() {
@@ -267,6 +464,12 @@ function render() {
   document.documentElement.dataset.contrast = state.settings?.highContrast ? 'high' : 'normal';
   // 标签列表按钮可以在设置里关掉（有人只用 Ctrl+Shift+T 打开）
   $('#btn-tablist').classList.toggle('hidden', state.settings?.showTablistBtn === false);
+  // 无痕窗口全局标识：URL 带 ?incognito=1 或窗口标题含「无痕」时显示（地址栏左侧）
+  try {
+    const incognito = new URLSearchParams(location.search).has('incognito')
+      || (document.title || '').includes('无痕');
+    $('#incognito-badge')?.classList.toggle('on', incognito);
+  } catch (_) {}
   // 工具栏按钮显隐：可在「设置-外观」开关，也可以右键按钮直接隐藏
   $('#btn-extensions').classList.toggle('hidden', state.settings?.showExtBtn === false);
   $('#btn-history').classList.toggle('hidden', state.settings?.showHistoryBtn === false);
@@ -297,44 +500,15 @@ function render() {
       }
     }
     for (const tab of list.filter(t => !t.pinned && !t.folderId)) tabsEl.appendChild(buildTabEl(tab, false));
+  } else {
+    // 签名不含 title，标题变化走轻量文本同步，不重建 DOM
+    syncTabTitles();
   }
 
-  // 书签栏
+  // 书签栏：根书签平铺 + 文件夹 chip；放不下的折叠进「更多」，点开走书签浮层面板
   const showBm = state.settings?.showBookmarksBar !== false;
   bookmarkbarEl.classList.toggle('hidden', !showBm);
-  if (showBm) {
-    const bmSig = state.bookmarks.map(b => b.url + b.title).join('|');
-    if (bookmarkbarEl.dataset.sig !== bmSig) {
-      bookmarkbarEl.dataset.sig = bmSig;
-      bookmarkbarEl.innerHTML = '';
-      for (const b of state.bookmarks) {
-        const el = document.createElement('div');
-        el.className = 'bm-item';
-        el.title = b.url;
-        const fav = document.createElement('span');
-        fav.className = 'bm-fav';
-        const host = hostOf(b.url);
-        const letter = document.createElement('span');
-        letter.className = 'tab-letter';
-        letter.textContent = host ? host.charAt(0).toUpperCase() : '★';
-        fav.appendChild(letter);
-        el.appendChild(fav);
-        const name = document.createElement('span');
-        name.className = 'b-name';
-        name.textContent = b.title || host;
-        el.appendChild(name);
-        if (host) fillFavicon(fav, host, letter, '#24292f');
-        el.onclick = () => invoke('navigate', { input: b.url });
-        bookmarkbarEl.appendChild(el);
-      }
-      const more = document.createElement('button');
-      more.className = 'bm-more';
-      more.textContent = state.bookmarks.length ? '全部书签' : '添加书签';
-      more.title = '书签面板 (Ctrl+Shift+B)';
-      more.onclick = () => invoke('ui_action', { what: 'bookmarks' });
-      bookmarkbarEl.appendChild(more);
-    }
-  }
+  if (showBm) renderBookmarkBar();
 
   // 地址栏
   const active = activeTab();
@@ -344,8 +518,12 @@ function render() {
     address.placeholder = '搜索，或输入网址';
   }
   const url = active ? active.url : '';
-  addrScheme.classList.toggle('secure', url.startsWith('https://'));
+  const https = url.startsWith('https://');
+  addrScheme.classList.toggle('secure', https);
   addrScheme.classList.toggle('insecure', url.startsWith('http://'));
+  // HTTPS 显示锁，HTTP / 内部页显示不带锁的地球图标；形状差异让色觉障碍也能分辨
+  const schemeUse = addrScheme.querySelector('use');
+  if (schemeUse) schemeUse.setAttribute('href', https ? '#i-lock' : '#i-globe');
 
   // 收藏星标
   $('#btn-star').classList.toggle('active', active ? isBookmarked(active.url) : false);
@@ -378,6 +556,7 @@ function render() {
     ? '<svg class="ic"><use href="#i-stop"/></svg>'
     : '<svg class="ic"><use href="#i-reload"/></svg>';
   reload.title = loading ? '停止加载 (Esc)' : '刷新 (Ctrl+R)';
+  updateNavButtons();
 }
 
 /* ==================== 通用浮层右键菜单 ==================== */
@@ -386,6 +565,7 @@ function render() {
 // ctxmenu.html 浮层：这里只生成「动作标识」发给 Rust，点击后再 emit 回来分发。
 
 function hideContextMenu() {
+  ctxActions.clear();   // 菜单关闭后本轮动作闭包不再需要，及时释放
   invoke('close_overlay').catch(() => {});
 }
 
@@ -397,6 +577,8 @@ function hideContextMenu() {
 let ctxSeq = 0;
 const ctxActions = new Map();
 function openCtxMenuAt(x, y, items, width = 196) {
+  // 同时只有一个菜单：打开新的前清掉上一轮未消费的动作闭包，避免 Map 无限增长
+  ctxActions.clear();
   const payload = [];
   for (const it of items) {
     const key = `a${++ctxSeq}`;
@@ -473,11 +655,14 @@ function showTabContextMenu(e, tab) {
   const items = [
     { label: tab.pinned ? '取消固定' : '固定标签', run: () => invoke('toggle_pin', { id: tab.id }) },
     { label: 'Glance 预览', key: 'Alt+点击', run: () => invoke('open_glance', { id: tab.id }) },
-    { label: tab.folderId ? '移出文件夹' : '收入新文件夹', run: () => {
+    { label: tab.folderId ? '移出文件夹' : '收入新文件夹', run: async () => {
       if (tab.folderId) {
         invoke('move_tab_to_folder', { id: tab.id, folderId: null });
       } else {
-        invoke('create_folder', { name: '' }).then((fid) => {
+        // 新建时让用户当场命名，避免总是一堆同名的「新文件夹」
+        const name = await promptBox('新文件夹名称', '新文件夹');
+        if (!name || !name.trim()) return;
+        invoke('create_folder', { name: name.trim() }).then((fid) => {
           if (fid) invoke('move_tab_to_folder', { id: tab.id, folderId: fid });
         });
       }
@@ -522,11 +707,15 @@ document.addEventListener('contextmenu', (e) => {
   if (e.target.closest('.bm-item')) {
     e.preventDefault();
     const el = e.target.closest('.bm-item');
-    const url = el.title;
+    const url = el.dataset.bmUrl;  // 必须用真实 url，title 是「文件夹/标题\nurl」拼接串（M8）
+    if (!url) return;
     openCtxMenu(e, [
       { label: '打开书签', run: () => invoke('navigate', { input: url }) },
       { sep: true },
-      { label: '删除书签', run: () => invoke('remove_bookmark', { url }) },
+      { label: '删除书签', run: async () => {
+        if (!(await confirmBox('确定删除这个书签？此操作不可撤销。', '删除书签', '删除'))) return;
+        invoke('remove_bookmark', { url }).catch(() => chromeToast('删除书签失败，请重试'));
+      } },
     ], 172);
   } else if (!e.target.closest('.tab') && !e.target.closest('.folder-chip')) {
     hideContextMenu();
@@ -567,7 +756,11 @@ async function translateCurrent(to) {
   let target = to;
   if (!target && ext.cfg.target) target = String(ext.cfg.target);
   try { target = target || localStorage.getItem('trawl-translate-to') || 'zh'; } catch { target = target || 'zh'; }
-  invoke('toggle_translate', { id: a.id, to: target }).catch((err) => reportError(`toggle_translate FAILED: ${String(err)}`));
+  invoke('toggle_translate', { id: a.id, to: target })
+    .catch((err) => {
+      reportError(`toggle_translate FAILED: ${String(err)}`);
+      chromeToast('翻译失败，请重试');
+    });
 }
 
 async function openTranslateMenu() {
@@ -601,9 +794,14 @@ async function openTranslateMenu() {
 
 /** 地址栏建议面板：位置严格贴住地址栏，宽度与地址栏一致 */
 let qbShown = false;
+let quickbarSel = -1;   // quickbar 键盘选中项（quickbar-sel 事件同步）
+listen('quickbar-sel', (ev) => {
+  quickbarSel = typeof ev.payload === 'number' ? ev.payload : -1;
+});
 function openQuickbar() {
   const r = $('#address-wrap').getBoundingClientRect();
   qbShown = true;
+  quickbarSel = -1;
   invoke('open_quickbar', {
     x: Math.round(r.left),
     y: Math.round(r.bottom + 6),
@@ -673,7 +871,12 @@ function commitAddress() {
   endEdit();
   address.blur();
   invoke('close_overlay').catch(() => {});
-  if (v) invoke('navigate', { input: v }).catch((err) => reportError(`navigate FAILED: ${String(err)}`));
+  if (v) invoke('navigate', { input: v })
+    .then(() => navPush(state.activeTab, v))
+    .catch((err) => {
+      reportError(`navigate FAILED: ${String(err)}`);
+      chromeToast('打开失败，请检查网址或网络连接');
+    });
 }
 
 /** 放弃编辑，恢复显示当前页地址 */
@@ -716,8 +919,8 @@ function reportLayout() {
 
 $('#btn-newtab').onclick = () => invoke('new_tab');
 $('#btn-tablist').onclick = () => invoke('open_tablist');
-$('#btn-back').onclick = () => invoke('nav_back');
-$('#btn-fwd').onclick = () => invoke('nav_forward');
+$('#btn-back').onclick = goBack;
+$('#btn-fwd').onclick = goForward;
 $('#btn-reload').onclick = () => {
   if (activeTab()?.loading) invoke('stop_loading');
   else invoke('nav_reload');
@@ -767,6 +970,14 @@ function cycleTab(d) {
   const base = idx >= 0 ? idx : 0;
   const next = tabs[(base + d + tabs.length) % tabs.length];
   if (next) invoke('activate_tab', { id: next.id });
+}
+
+/** 恢复最近关闭的标签：new_tab 命令没有 url 参数，先新建再导航到原地址 */
+function reopenClosedTab() {
+  invoke('reopen_tab').then((url) => {
+    if (!url) { chromeToast('没有可恢复的标签'); return; }
+    invoke('new_tab').then(() => invoke('navigate', { input: url }));
+  }).catch((err) => reportError(`reopen_tab FAILED: ${String(err)}`));
 }
 listen('shortcut', (ev) => {
   const p = ev.payload;
@@ -848,6 +1059,45 @@ function chromeToast(msg) {
 }
 listen('ext-toast', (ev) => chromeToast(String(ev.payload)));
 
+/* ---- 自绘询问框（替代原生 confirm/prompt，避免 WebView2 假死） ---- */
+let askResolve = null;
+function askBox(opts) {
+  const o = Object.assign({ title: '确认', msg: '', okText: '确定', input: false, value: '' }, opts || {});
+  const mask = $('#ask-mask');
+  if (!mask) return Promise.resolve(o.input ? null : false);
+  $('#ask-title').textContent = o.title;
+  $('#ask-msg').textContent = o.msg || '';
+  $('#ask-msg').style.display = o.msg ? '' : 'none';
+  const input = $('#ask-input');
+  input.classList.toggle('hidden', !o.input);
+  input.value = o.value || '';
+  $('#ask-ok').textContent = o.okText || '确定';
+  mask.classList.remove('hidden');
+  const done = (v) => {
+    mask.classList.add('hidden');
+    document.removeEventListener('keydown', onKey, true);
+    const r = askResolve; askResolve = null;
+    if (r) r(v);
+  };
+  // capture 阶段拦截：Esc 关对话框而不是关浮层/取消编辑，Enter 提交而不是导航
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(o.input ? null : false); }
+    else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); done(o.input ? input.value : true); }
+  };
+  document.addEventListener('keydown', onKey, true);
+  $('#ask-ok').onclick = () => done(o.input ? input.value : true);
+  $('#ask-cancel').onclick = () => done(o.input ? null : false);
+  mask.onclick = (e) => { if (e.target === mask) done(o.input ? null : false); };
+  setTimeout(() => {
+    const t = o.input ? input : $('#ask-ok');
+    t.focus();
+    if (o.input) input.select();
+  }, 0);
+  return new Promise((resolve) => { askResolve = resolve; });
+}
+const confirmBox = (msg, title, okText) => askBox({ title: title || '确认', msg, okText: okText || '确定' });
+const promptBox = (title, value, msg) => askBox({ title, msg: msg || '', input: true, value: value || '', okText: '确定' });
+
 /* ---- 关闭确认插件 ---- */
 const cgMask = $('#close-guard');
 listen('close-guard', (ev) => {
@@ -899,8 +1149,8 @@ listen('shortcut', (ev) => {
   else if (what === 'address') { address.focus(); beginEdit(true); }
   else if (what === 'bookmark') toggleStar();
   else if (what === 'new_tab') invoke('new_tab');
-  else if (what === 'back') invoke('nav_back');
-  else if (what === 'forward') invoke('nav_forward');
+  else if (what === 'back') goBack();
+  else if (what === 'forward') goForward();
   else if (what === 'tablist') invoke('open_tablist');
   else if (what === 'close_tab') { const a = activeTab(); if (a) invoke('close_tab_cmd', { id: a.id }); }
   else if (what === 'reload') invoke('nav_reload');
@@ -911,9 +1161,14 @@ listen('shortcut', (ev) => {
   else if (what === 'zoom_reset') invoke('zoom_page', { delta: 0 });
   else if (what === 'extensions') openExtensions();
   else if (what === 'translate') openTranslateMenu();
+  else if (what === 'reopen_tab') reopenClosedTab();
 });
 
 document.addEventListener('keydown', (e) => {
+  // 修饰键按平台判断：macOS 认 ⌘(metaKey)，Windows 认 Ctrl(ctrlKey)；
+  // otherMod 排除另一个平台的修饰键，避免 ⌘A / Ctrl+A 这类编辑操作被当成浏览器快捷键。
+  const modKey = IS_MAC ? e.metaKey : e.ctrlKey;
+  const otherMod = IS_MAC ? e.ctrlKey : e.metaKey;
   // 地址栏建议面板是独立 webview，创建时会把 chrome 的 DOM 焦点打到 body 上，
   // 之后再打字/回车就全落空（表现为「输完网址按回车没反应」）。
   // 所以编辑态统一在 document 层兜住：先把焦点还给输入框，再接管回车 / Esc。
@@ -923,27 +1178,61 @@ document.addEventListener('keydown', (e) => {
       const n = address.value.length;
       try { address.setSelectionRange(n, n); } catch (_) {}
     }
-    if (e.key === 'Enter') { e.preventDefault(); commitAddress(); return; }
+    // 建议列表键盘选择：方向键转发给 quickbar 浮层（独立 webview，按键留在地址栏）
+    if (qbShown && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault();
+      try { window.__TAURI__.event.emit('quickbar-key', e.key); } catch (_) {}
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // 有键盘选中项时打开选中项（quickbar 自己消费），否则直接搜索/导航
+      if (qbShown && quickbarSel >= 0) {
+        try { window.__TAURI__.event.emit('quickbar-key', 'Enter'); } catch (_) {}
+        endEdit();
+        address.blur();
+        invoke('close_overlay').catch(() => {});
+        return;
+      }
+      commitAddress();
+      return;
+    }
     if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); return; }
   }
   if (e.key === 'Escape') {
     hideContextMenu();
     invoke('close_overlay').catch(() => {});
+    // 多选态下 Esc 先清空选择并给出可见反馈，而不是静默清掉
+    if (selectedTabs.size) {
+      selectedTabs.clear();
+      render();
+      chromeToast('已取消多选');
+    }
     if (state.glanceOpen) { invoke('close_glance'); return; }
     if (state.split) { invoke('exit_split'); return; }
   }
   // 热键注册失败（被别的程序占用）时的兜底；正常情况 Rust 侧已注册全局热键，
   // 事件不会冒泡到这里，因此不会重复执行。
-  if (e.ctrlKey && !e.altKey) {
+  if (modKey && !e.altKey && !otherMod) {
     if (e.shiftKey) {
+      if (e.key === 'Delete' || e.key === 'Del') { invoke('open_internal', { page: 'settings#privacy-clear' }); e.preventDefault(); return; }
       if (e.key === 'B' || e.key === 'b') { openBookmarks(); e.preventDefault(); return; }
       if (e.key === 'P' || e.key === 'p') { openPalette(); e.preventDefault(); return; }
-      if (e.key === 'T' || e.key === 't') { invoke('open_tablist'); e.preventDefault(); return; }
+      // 恢复最近关闭的标签（全局热键 Ctrl+Shift+T 同款逻辑，复用 reopenClosedTab）
+      if (e.key === 'T' || e.key === 't') {
+        reopenClosedTab();
+        e.preventDefault(); return;
+      }
+      // 原「标签列表」改绑 Ctrl/Cmd+Shift+L
+      if (e.key === 'L' || e.key === 'l') { invoke('open_tablist'); e.preventDefault(); return; }
       if (e.key === 'E' || e.key === 'e') { openExtensions(); e.preventDefault(); return; }
     } else {
       const k = e.key.toLowerCase();
       if (k === 't') { invoke('new_tab'); e.preventDefault(); }
-      if (k === 'l' || k === 'k') { address.focus(); beginEdit(true); e.preventDefault(); }
+      if (k === 'n') { invoke('open_standalone_window', { incognito: false }); e.preventDefault(); }
+      if (k === 'p') { invoke('print_page'); e.preventDefault(); }
+      if (k === 'l') { address.focus(); beginEdit(true); e.preventDefault(); }
+      if (k === 'k') { openPalette(); e.preventDefault(); }  // 与三处文案一致：Ctrl+K = 命令面板
       if (k === 'f') { openFindbar(); e.preventDefault(); }
       if (k === 'h') { openHistory(); e.preventDefault(); }
       if (k === 'd') { toggleStar(); e.preventDefault(); }
@@ -959,11 +1248,18 @@ document.addEventListener('keydown', (e) => {
       }
     }
   }
-  if (e.altKey && e.key === 'ArrowLeft') { invoke('nav_back'); e.preventDefault(); }
-  if (e.altKey && e.key === 'ArrowRight') { invoke('nav_forward'); e.preventDefault(); }
+  if (e.altKey && e.key === 'ArrowLeft') { goBack(); e.preventDefault(); }
+  if (e.altKey && e.key === 'ArrowRight') { goForward(); e.preventDefault(); }
 });
 
-window.addEventListener('resize', reportLayout);
+window.addEventListener('resize', () => {
+  reportLayout();
+  // 书签栏折叠依赖可用宽度，缩放窗口后强制重算
+  if (!bookmarkbarEl.classList.contains('hidden')) {
+    bookmarkbarEl.dataset.sig = '';
+    renderBookmarkBar();
+  }
+});
 window.addEventListener('load', reportLayout);
 
 // 「跟随系统」主题：系统切换深浅色时重新渲染

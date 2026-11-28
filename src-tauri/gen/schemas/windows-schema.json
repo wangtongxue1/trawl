@@ -267,6 +267,12 @@
           "markdownDescription": "Enables the close_workspace command without any pre-configured scope."
         },
         {
+          "description": "Enables the create_bookmark_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-bookmark-folder",
+          "markdownDescription": "Enables the create_bookmark_folder command without any pre-configured scope."
+        },
+        {
           "description": "Enables the create_folder command without any pre-configured scope.",
           "type": "string",
           "const": "allow-create-folder",
@@ -283,6 +289,12 @@
           "type": "string",
           "const": "allow-debug-msg",
           "markdownDescription": "Enables the debug_msg command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delete_bookmark_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delete-bookmark-folder",
+          "markdownDescription": "Enables the delete_bookmark_folder command without any pre-configured scope."
         },
         {
           "description": "Enables the delete_folder command without any pre-configured scope.",
@@ -457,6 +469,12 @@
           "type": "string",
           "const": "allow-mob-switch-tab",
           "markdownDescription": "Enables the mob_switch_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the move_bookmark command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-move-bookmark",
+          "markdownDescription": "Enables the move_bookmark command without any pre-configured scope."
         },
         {
           "description": "Enables the move_tab command without any pre-configured scope.",
@@ -679,6 +697,18 @@
           "type": "string",
           "const": "allow-remove-history-entry",
           "markdownDescription": "Enables the remove_history_entry command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the rename_bookmark command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-rename-bookmark",
+          "markdownDescription": "Enables the rename_bookmark command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the rename_bookmark_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-rename-bookmark-folder",
+          "markdownDescription": "Enables the rename_bookmark_folder command without any pre-configured scope."
         },
         {
           "description": "Enables the rename_folder command without any pre-configured scope.",
@@ -951,6 +981,12 @@
           "markdownDescription": "Denies the close_workspace command without any pre-configured scope."
         },
         {
+          "description": "Denies the create_bookmark_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-bookmark-folder",
+          "markdownDescription": "Denies the create_bookmark_folder command without any pre-configured scope."
+        },
+        {
           "description": "Denies the create_folder command without any pre-configured scope.",
           "type": "string",
           "const": "deny-create-folder",
@@ -967,6 +1003,12 @@
           "type": "string",
           "const": "deny-debug-msg",
           "markdownDescription": "Denies the debug_msg command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delete_bookmark_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delete-bookmark-folder",
+          "markdownDescription": "Denies the delete_bookmark_folder command without any pre-configured scope."
         },
         {
           "description": "Denies the delete_folder command without any pre-configured scope.",
@@ -1141,6 +1183,12 @@
           "type": "string",
           "const": "deny-mob-switch-tab",
           "markdownDescription": "Denies the mob_switch_tab command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the move_bookmark command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-move-bookmark",
+          "markdownDescription": "Denies the move_bookmark command without any pre-configured scope."
         },
         {
           "description": "Denies the move_tab command without any pre-configured scope.",
@@ -1363,6 +1411,18 @@
           "type": "string",
           "const": "deny-remove-history-entry",
           "markdownDescription": "Denies the remove_history_entry command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the rename_bookmark command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-rename-bookmark",
+          "markdownDescription": "Denies the rename_bookmark command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the rename_bookmark_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-rename-bookmark-folder",
+          "markdownDescription": "Denies the rename_bookmark_folder command without any pre-configured scope."
         },
         {
           "description": "Denies the rename_folder command without any pre-configured scope.",

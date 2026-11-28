@@ -1046,6 +1046,7 @@ function toggleStar() {
 
 /* ==================== 布局上报 ==================== */
 
+let _lastLayoutSig = '';
 function reportLayout() {
   const vertical = document.documentElement.dataset.vertical === '1';
   // 竖直标签栏时，tabstrip 变成左侧 188px 一列；工具栏/书签栏在其右侧。
@@ -1054,12 +1055,15 @@ function reportLayout() {
   const chromeH = vertical
     ? Math.round($('#toolbar').offsetHeight + (bookmarkbarEl.classList.contains('hidden') ? 0 : bookmarkbarEl.offsetHeight) + 2)
     : chromeEl.offsetHeight;
-  invoke('layout', {
-    x,
-    y: chromeH,
-    width: Math.round(window.innerWidth - x),
-    height: Math.round(window.innerHeight - chromeH),
-  }).catch((err) => reportError(`layout FAILED: ${String(err)}`));
+  const w = Math.round(window.innerWidth - x);
+  const h = Math.round(window.innerHeight - chromeH);
+  // 关键：layout 会让后端对内容 webview 调 set_bounds + show，每次都会重绘闪一下。
+  // 数据类 state 事件（书签/设置变化）不该动布局，只有尺寸真变了才上报。
+  const sig = `${x}|${chromeH}|${w}|${h}`;
+  if (sig === _lastLayoutSig) return;
+  _lastLayoutSig = sig;
+  invoke('layout', { x, y: chromeH, width: w, height: h })
+    .catch((err) => reportError(`layout FAILED: ${String(err)}`));
 }
 
 /* ==================== 事件绑定 ==================== */

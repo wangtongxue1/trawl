@@ -493,6 +493,57 @@ button { font-family: inherit; }
 .bm-more::after { content: '›'; font-size: 14px; line-height: 1; }
 .bm-more:hover { background: var(--chrome-hover); color: var(--text); }
 
+/* 书签目录下拉菜单（Edge 收藏夹栏风格：点 📁 就地展开） */
+.bm-folder-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 232px;
+  max-width: 320px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: var(--shadow-md);
+}
+.bm-folder-menu .bfm-head {
+  padding: 6px 9px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.bm-folder-menu .bfm-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 9px;
+  font-size: 12px;
+  color: var(--text);
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bm-folder-menu .bfm-item:hover { background: var(--chrome-hover); }
+.bm-folder-menu .bfm-label { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+/* 子目录行：📁 + 名称 + chevron + 数量 */
+.bm-folder-menu .bfm-ico { font-size: 13px; line-height: 1; flex-shrink: 0; }
+.bm-folder-menu .bfm-chevron { color: var(--text-dim); font-size: 15px; line-height: 1; }
+.bm-folder-menu .bfm-count {
+  font-size: 11px; color: var(--text-dim);
+  background: var(--chrome-hover); border-radius: 8px; padding: 0 5px; flex-shrink: 0;
+}
+.bm-folder-menu .bfm-child { margin-left: 0; }
+.bm-folder-menu .bfm-all {
+  margin-top: 4px;
+  padding: 7px 9px;
+  font-size: 12px;
+  color: var(--accent-deep);
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  border-radius: 7px;
+}
+.bm-folder-menu .bfm-all:hover { background: var(--chrome-hover); }
+
 /* ============ 竖直标签栏（Tabbit 风格，由设置切换） ============ */
 /* 说明：竖直模式下标签条移到左侧一列，内容区由 layout 上报向右让位。
    这里只做 chrome 自身的样式切换，内容区偏移由 renderer.reportLayout 计算。 */

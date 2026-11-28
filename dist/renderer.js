@@ -199,6 +199,22 @@ function buildFavicon(tab) {
   return box;
 }
 
+// 书签栏显示策略（Edge 三档）：always / newtab / never，存 localStorage，向后兼容旧布尔
+function bookmarkBarMode() {
+  const m = localStorage.getItem('bmBarMode');
+  if (m === 'always' || m === 'newtab' || m === 'never') return m;
+  return state.settings?.showBookmarksBar === false ? 'never' : 'always';
+}
+function isNewTabPage(url) {
+  return !!url && (url.startsWith('trawl://newtab') || url.includes('/newtab.html'));
+}
+function applyBookmarkBar() {
+  const mode = bookmarkBarMode();
+  const show = mode === 'always' || (mode === 'newtab' && isNewTabPage(activeTab()?.url));
+  bookmarkbarEl.classList.toggle('hidden', !show);
+  if (show) { bookmarkbarEl.dataset.sig = ''; renderBookmarkBar(); }
+}
+
 function buildTabEl(tab, pinned) {
   const el = document.createElement('div');
   el.className = 'tab'
@@ -358,18 +374,199 @@ function buildBmItem(b) {
   return el;
 }
 
-// 构造文件夹 chip：点击打开书签浮层面板（面板内按文件夹分组）
-function buildBmFolderChip(name, count) {
+// 自动归类：把无 folder 的根书签按域名归到可读目录（Edge 式：栏上只放目录）
+const BM_AUTO_RULES = [
+  { name: '百度', test: h => /(^|\.)baidu\.(com|cn)$/.test(h) },
+  { name: '阿里/购物', test: h => /(^|\.)(taobao|tmall|alibaba|jd|pinduoduo|douyin)\.(com|cn)$/.test(h) },
+  { name: '腾讯', test: h => /(^|\.)(qq|tencent|weixin|wechat)\.(com|cn)$/.test(h) },
+  { name: 'AI 工具', test: h => /(^|\.)(doubao|chatgpt|openai|claude|kimi|moonshot|zhipu|bigmodel|yuanbao|gemini|deepseek)\.(com|cn|ai)$/.test(h) },
+  { name: '开发者', test: h => /(^|\.)(csdn|juejin|github|gitee|stackoverflow|zhihu|segmentfault|oschina|cnblogs)\.(com|cn|net|org)$/.test(h) },
+  { name: '本地服务', test: h => /^(\d{1,3}\.){3}\d{1,3}$/.test(h) || h === 'localhost' },
+];
+function autoCategoryOf(b) {
+  const h = hostOf(b.url);
+  for (const r of BM_AUTO_RULES) if (r.test(h)) return r.name;
+  return '其他';
+}
+
+/* ---- 书签目录树（Edge 收藏夹栏：folder 按 / 分层，支持 chevron 逐级展开） ----
+ * 节点：{ name, path, children: Map<name,node>, bookmarks: [] }
+ * 无 folder 的书签按域名自动归类进第一层目录；有 folder 的按 / 拆成多级。 */
+function buildBookmarkTree() {
+  const root = { name: '', path: '', children: new Map(), bookmarks: [], count: 0 };
+  const ensure = (segments) => {
+    let node = root, path = '';
+    for (const seg of segments) {
+      path = path ? `${path}/${seg}` : seg;
+      if (!node.children.has(seg)) {
+        node.children.set(seg, { name: seg, path, children: new Map(), bookmarks: [], count: 0 });
+      }
+      node = node.children.get(seg);
+    }
+    return node;
+  };
+  for (const b of state.bookmarks) {
+    const segs = b.folder
+      ? b.folder.split('/').map(s => s.trim()).filter(Boolean)
+      : [autoCategoryOf(b)];
+    ensure(segs).bookmarks.push(b);
+  }
+  const recount = (node) => {
+    node.count = node.bookmarks.length;
+    for (const c of node.children.values()) node.count += recount(c);
+    return node.count;
+  };
+  recount(root);
+  return root;
+}
+// 顶层目录，按数量降序
+function topFolders(tree) {
+  return [...tree.children.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+// 构造顶层目录 chip：点击就地弹出下拉（Edge 风格）
+function buildBmFolderChip(node) {
   const el = document.createElement('div');
   el.className = 'bm-folder';
-  el.innerHTML = `<span class="bf-ico">📁</span><span class="bf-name"></span><span class="bf-count">${count}</span>`;
-  el.querySelector('.bf-name').textContent = name;
-  el.title = `${name}（${count} 个书签，点击查看）`;
-  el.onclick = () => invoke('ui_action', { what: 'bookmarks' });
+  el.dataset.folder = node.path;
+  el.innerHTML = `<span class="bf-ico">📁</span><span class="bf-name"></span><span class="bf-count">${node.count}</span>`;
+  el.querySelector('.bf-name').textContent = node.name;
+  el.title = `${node.name}（${node.count} 个书签，点击展开）`;
+  el.setAttribute('role', 'button');
+  el.tabIndex = 0;
+  el.setAttribute('aria-label', `${node.name} 文件夹，${node.count} 个书签，点击展开`);
+  const openMenu = () => showFolderMenu(el, node);
+  el.onclick = (e) => { e.stopPropagation(); openMenu(); };
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(); } });
   return el;
 }
 
-// 渲染书签栏：分组 + 溢出折叠测量
+// ---- 就地弹出的目录下拉菜单（fixed 定位；子目录带 chevron 可展开）----
+let bmFolderMenu = null;
+function closeFolderMenu() {
+  if (bmFolderMenu) { bmFolderMenu.remove(); bmFolderMenu = null; }
+}
+// 打开一个书签（当前标签）
+function openBmHere(b) {
+  invoke('navigate', { input: b.url })
+    .then(() => navPush(state.activeTab, b.url))
+    .catch(() => chromeToast('打开书签失败，请检查网址'));
+  closeFolderMenu();
+}
+// 渲染一个目录节点的内容（书签 + 子目录）到容器 panel
+function renderBmNode(node, panel) {
+  // 子目录在前（Edge 风格：文件夹排在链接上方）
+  const subs = [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name));
+  for (const sub of subs) {
+    const row = document.createElement('div');
+    row.className = 'bfm-item bfm-sub';
+    row.setAttribute('role', 'menuitem');
+    row.tabIndex = 0;
+    row.innerHTML = `<span class="bfm-ico">📁</span><span class="bfm-label"></span><span class="bfm-chevron">›</span><span class="bfm-count">${sub.count}</span>`;
+    row.querySelector('.bfm-label').textContent = sub.name;
+    // 悬停/点击展开子目录（右侧滑出子面板，Edge 交互）
+    let childPanel = null;
+    const expand = () => {
+      if (childPanel) return;
+      childPanel = document.createElement('div');
+      childPanel.className = 'bm-folder-menu bfm-child';
+      renderBmNode(sub, childPanel);
+      document.body.appendChild(childPanel);
+      const pr = panel.getBoundingClientRect();
+      const rr = row.getBoundingClientRect();
+      const cw = childPanel.offsetWidth, ch = childPanel.offsetHeight;
+      childPanel.style.left = Math.min(pr.right + 2, window.innerWidth - cw - 6) + 'px';
+      childPanel.style.top = Math.min(rr.top - 4, window.innerHeight - ch - 6) + 'px';
+      childPanel._parent = panel;
+    };
+    const collapse = () => {
+      // 仅关闭自己及更深层子面板
+      let p = childPanel;
+      while (p) { const next = p._childPanel; p.remove(); p = next; }
+      if (childPanel) childPanel = null;
+    };
+    row.addEventListener('mouseenter', expand);
+    row.addEventListener('mouseleave', () => {
+      setTimeout(() => { if (childPanel && !childPanel.matches(':hover')) collapse(); }, 180);
+    });
+    row.onclick = (e) => { e.stopPropagation(); expand(); };
+    row.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); expand(); } });
+    panel.appendChild(row);
+  }
+  // 本目录的书签
+  for (const b of node.bookmarks) {
+    const row = document.createElement('div');
+    row.className = 'bfm-item';
+    row.setAttribute('role', 'menuitem');
+    row.tabIndex = 0;
+    const fav = document.createElement('span');
+    fav.className = 'bm-fav';
+    const letter = document.createElement('span');
+    letter.className = 'tab-letter';
+    letter.textContent = (hostOf(b.url).charAt(0) || '★').toUpperCase();
+    fav.appendChild(letter);
+    const label = document.createElement('span');
+    label.className = 'bfm-label';
+    label.textContent = b.title || hostOf(b.url);
+    row.append(fav, label);
+    row.onclick = (e) => { e.stopPropagation(); openBmHere(b); };
+    row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBmHere(b); } });
+    // Edge 风格右键菜单
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      closeFolderMenu();
+      openCtxMenu(e, [
+        { label: '打开', run: () => invoke('navigate', { input: b.url }) },
+        { label: '在新标签页中打开', run: () => invoke('navigate_new_tab', { input: b.url }) },
+        { label: '复制链接', run: () => navigator.clipboard.writeText(b.url).then(() => chromeToast('已复制链接')).catch(() => chromeToast('复制失败')) },
+        { sep: true },
+        { label: '删除书签', run: async () => {
+          if (!(await confirmBox('确定删除这个书签？', '删除书签', '删除'))) return;
+          invoke('remove_bookmark', { url: b.url }).catch(() => chromeToast('删除失败'));
+        } },
+      ], 180);
+    });
+    panel.appendChild(row);
+  }
+}
+function showFolderMenu(anchor, node) {
+  closeFolderMenu();
+  const menu = document.createElement('div');
+  menu.className = 'bm-folder-menu';
+  menu.setAttribute('role', 'menu');
+  const head = document.createElement('div');
+  head.className = 'bfm-head';
+  head.textContent = `${node.name}（${node.count}）`;
+  menu.appendChild(head);
+  renderBmNode(node, menu);
+  // 底部：在新标签页全部打开（递归收集本目录所有书签）
+  const collect = (n, acc) => { acc.push(...n.bookmarks); for (const c of n.children.values()) collect(c, acc); return acc; };
+  const allBms = collect(node, []);
+  if (allBms.length > 1) {
+    const all = document.createElement('div');
+    all.className = 'bfm-all';
+    all.textContent = '在新标签页中全部打开';
+    all.onclick = (e) => {
+      e.stopPropagation();
+      for (const b of allBms) invoke('navigate_new_tab', { input: b.url }).catch(() => {});
+      closeFolderMenu();
+    };
+    menu.appendChild(all);
+  }
+  document.body.appendChild(menu);
+  bmFolderMenu = menu;
+  const r = anchor.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  menu.style.left = Math.max(6, Math.min(r.left, window.innerWidth - mw - 6)) + 'px';
+  menu.style.top = (r.bottom + 4 + mh > window.innerHeight ? Math.max(6, r.top - mh - 4) : r.bottom + 4) + 'px';
+}
+document.addEventListener('click', (e) => {
+  if (bmFolderMenu && !bmFolderMenu.contains(e.target)) closeFolderMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFolderMenu(); });
+window.addEventListener('resize', closeFolderMenu);
+
+// 渲染书签栏：目录 chip + 溢出折叠测量
 function renderBookmarkBar() {
   const bmSig = state.bookmarks.map(b => `${b.url}|${b.title}|${b.folder || ''}`).join('|')
     + '@' + bookmarkbarEl.clientWidth;
@@ -377,18 +574,9 @@ function renderBookmarkBar() {
   bookmarkbarEl.dataset.sig = bmSig;
   bookmarkbarEl.innerHTML = '';
 
-  const roots = state.bookmarks.filter(b => !b.folder);
-  const folderMap = new Map();
-  for (const b of state.bookmarks) {
-    if (!b.folder) continue;
-    const top = b.folder.split('/')[0];
-    if (!folderMap.has(top)) folderMap.set(top, 0);
-    folderMap.set(top, folderMap.get(top) + 1);
-  }
-
-  const items = [];
-  for (const b of roots) items.push(buildBmItem(b));
-  for (const [name, count] of folderMap) items.push(buildBmFolderChip(name, count));
+  const tree = buildBookmarkTree();
+  const folders = topFolders(tree);
+  const items = folders.map(buildBmFolderChip);
   const more = document.createElement('button');
   more.className = 'bm-more';
   more.id = 'bm-more-btn';
@@ -505,8 +693,9 @@ function render() {
     syncTabTitles();
   }
 
-  // 书签栏：根书签平铺 + 文件夹 chip；放不下的折叠进「更多」，点开走书签浮层面板
-  const showBm = state.settings?.showBookmarksBar !== false;
+  // 书签栏：目录 chip + 溢出折叠；显示策略三档（始终/仅新标签页/从不，Edge 风格）
+  const bmMode = bookmarkBarMode();
+  const showBm = bmMode === 'always' || (bmMode === 'newtab' && isNewTabPage(activeTab()?.url));
   bookmarkbarEl.classList.toggle('hidden', !showBm);
   if (showBm) renderBookmarkBar();
 
@@ -682,21 +871,23 @@ function showTabContextMenu(e, tab) {
   openCtxMenu(e, items, 200);
 }
 
-/** 书签栏右键：编辑书签栏 */
+/** 书签栏右键：编辑书签栏（Edge 风格显示策略） */
 function showBookmarkBarMenu(e) {
-  const shown = state.settings?.showBookmarksBar !== false;
+  const mode = bookmarkBarMode();
+  const mark = (m) => (mode === m ? '✓ ' : '    ');
   openCtxMenu(e, [
-    {
-      label: shown ? '隐藏书签栏' : '显示书签栏', key: 'Ctrl+Shift+B',
-      run: () => {
-        const s = Object.assign({}, state.settings, { showBookmarksBar: !shown });
-        invoke('save_settings', { settings: s });
-      },
-    },
+    { label: `${mark('always')}始终显示`, run: () => { localStorage.setItem('bmBarMode', 'always'); applyBookmarkBar(); } },
+    { label: `${mark('newtab')}仅在新标签页显示`, run: () => { localStorage.setItem('bmBarMode', 'newtab'); applyBookmarkBar(); } },
+    { label: `${mark('never')}从不显示`, run: () => { localStorage.setItem('bmBarMode', 'never'); applyBookmarkBar(); } },
+    { sep: true },
     { label: '收藏当前页', key: 'Ctrl+D', run: () => toggleStar() },
+    { label: '在新标签页中全部打开', run: () => {
+      const collect = (n, acc) => { acc.push(...n.bookmarks); for (const c of n.children.values()) collect(c, acc); return acc; };
+      for (const b of collect(buildBookmarkTree(), [])) invoke('navigate_new_tab', { input: b.url }).catch(() => {});
+    } },
     { sep: true },
     { label: '管理全部书签', run: () => openBookmarks() },
-  ], 200);
+  ], 210);
 }
 bookmarkbarEl.addEventListener('contextmenu', (e) => {
   e.preventDefault();

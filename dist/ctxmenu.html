@@ -33,18 +33,38 @@ body {
   box-shadow: var(--shadow-md);
   padding: 6px;
 }
+/* 书签下拉模式：限高滚动（Edge 风格） */
+.card.bm-mode { max-height: calc(100vh - 24px); overflow-y: auto; overflow-x: hidden; padding: 5px; }
+.card.bm-mode::-webkit-scrollbar { width: 8px; }
+.card.bm-mode::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .item {
   display: flex; align-items: center; gap: 8px;
   min-height: 34px; padding: 0 10px;
   border-radius: 7px; font-size: 12px; cursor: pointer;
   white-space: nowrap;
 }
+.bm-mode .item { min-height: 30px; padding: 0 8px; }
 .item:hover:not(.disabled) { background: var(--hover); }
 .item.disabled { opacity: .38; cursor: default; }
 .item .k {
   margin-left: auto; padding-left: 22px;
   color: var(--text-dim); font-size: 11px;
 }
+/* 书签菜单标题行（不可点） */
+.bm-mode .bm-head {
+  padding: 5px 8px 7px; font-size: 11px; color: var(--text-dim);
+  border-bottom: 1px solid var(--divider); margin-bottom: 4px; cursor: default;
+}
+/* 书签 item 里的首字母色块（favicon 位） */
+.bm-mode .bm-ico {
+  width: 16px; height: 16px; min-width: 16px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: #fff; background: #4285f4;
+}
+.bm-mode .bm-ico.bm-folder-ico { background: transparent; font-size: 13px; }
+.bm-mode .bm-label { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+/* 子文件夹 chevron */
+.bm-mode .bm-chev { color: var(--text-dim); font-size: 14px; margin-left: auto; }
 .sep { height: 1px; background: var(--divider); margin: 5px 8px; }
 /* 键盘焦点可见 */
 :focus-visible { outline: 2px solid var(--accent, #10b981); outline-offset: -1px; }
@@ -65,6 +85,8 @@ function tryTheme() {
 }
 
 function fit() {
+  // 书签下拉模式：高度由后端按项数设定（最多 520px），此处不覆盖，内部滚动即可
+  if (items.some((it) => it.header || it.kind)) return;
   const h = Math.ceil($('#card').getBoundingClientRect().height) + 12;
   invoke('resize_overlay', { height: h }).catch(() => {});
 }
@@ -72,6 +94,8 @@ function fit() {
 function render() {
   const card = $('#card');
   card.innerHTML = '';
+  const bmMode = items.some((it) => it.header || it.kind);
+  card.classList.toggle('bm-mode', bmMode);
   for (const it of items) {
     if (it.sep) {
       const s = document.createElement('div');
@@ -79,14 +103,43 @@ function render() {
       card.appendChild(s);
       continue;
     }
+    // 书签菜单标题行
+    if (it.header) {
+      const h = document.createElement('div');
+      h.className = 'bm-head';
+      h.textContent = it.label;
+      card.appendChild(h);
+      continue;
+    }
     const el = document.createElement('div');
     el.className = 'item' + (it.disabled ? ' disabled' : '');
     el.setAttribute('role', 'menuitem');
     el.tabIndex = it.disabled ? -1 : 0;
+    // 书签菜单：首字母色块（子文件夹用无底色文件夹图标占位，保持对齐）
+    if (bmMode && (it.icon || it.kind === 'folder')) {
+      const ico = document.createElement('span');
+      if (it.kind === 'folder') {
+        ico.className = 'bm-ico bm-folder-ico';
+        ico.textContent = '📁';
+      } else {
+        ico.className = 'bm-ico';
+        ico.textContent = it.icon;
+        // 用 label 派生的稳定色，避免所有项同色
+        let hash = 0; for (const ch of it.label) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+        ico.style.background = `hsl(${Math.abs(hash) % 360} 55% 52%)`;
+      }
+      el.appendChild(ico);
+    }
     const label = document.createElement('span');
+    label.className = bmMode ? 'bm-label' : '';
     label.textContent = it.label;
     el.appendChild(label);
-    if (it.key) {
+    if (bmMode && it.kind === 'folder') {
+      const chev = document.createElement('span');
+      chev.className = 'bm-chev';
+      chev.textContent = '›';
+      el.appendChild(chev);
+    } else if (it.key) {
       const k = document.createElement('span');
       k.className = 'k';
       k.textContent = it.key;

@@ -98,6 +98,15 @@ struct CtxMenuItem {
     /// 是否禁用（灰显不可点）
     #[serde(default)]
     disabled: bool,
+    /// 书签菜单：站点首字母色块文字（Edge 风格 favicon 位），普通菜单为空
+    #[serde(default)]
+    icon: String,
+    /// 书签菜单：'folder'=子文件夹(带 chevron) / 'bookmark'=书签 / 空=普通菜单
+    #[serde(default)]
+    kind: String,
+    /// 是否为此菜单的标题行（不可点击）
+    #[serde(default)]
+    header: bool,
 }
 
 /// 当前浮层（find / history / bookmarks / palette / downloads / quickbar）
@@ -4429,9 +4438,18 @@ fn ui_action(app: AppHandle, what: String) {
 
 #[cfg(desktop)]
 fn open_ctxmenu_inner(app: &AppHandle, x: f64, y: f64, width: f64, items: Vec<CtxMenuItem>) {
-    let h = (items.iter().filter(|i| !i.sep).count() as f64) * 36.0
-        + (items.iter().filter(|i| i.sep).count() as f64) * 9.0
-        + 12.0;
+    let is_bm = items.iter().any(|i| !i.kind.is_empty() || i.header);
+    let h = if is_bm {
+        // 书签下拉：单行 32px，最多显示 ~14 行，超出由 ctxmenu.html 内部滚动
+        let rows = items.iter().filter(|i| !i.sep && !i.header).count() as f64;
+        let seps = items.iter().filter(|i| i.sep).count() as f64;
+        let header_h = if items.iter().any(|i| i.header) { 30.0 } else { 0.0 };
+        (rows * 32.0 + seps * 9.0 + header_h + 12.0).min(520.0).max(80.0)
+    } else {
+        (items.iter().filter(|i| !i.sep).count() as f64) * 36.0
+            + (items.iter().filter(|i| i.sep).count() as f64) * 9.0
+            + 12.0
+    };
     create_popup(
         app,
         "ctxmenu.html".to_string(),

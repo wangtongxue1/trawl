@@ -452,24 +452,35 @@ function openBmHere(b) {
 // 收集目录下所有书签（含子目录）
 function collectBm(node, acc) { acc.push(...node.bookmarks); for (const c of node.children.values()) collectBm(c, acc); return acc; }
 
-// 生成某个目录的浮层菜单项
+// 生成某个目录的浮层菜单项（Edge 风格：标题行 + 子文件夹 + 去重书签，无灰色域名小字）
 function bmMenuItems(node, depth = 0) {
   const items = [];
+  // 标题行（类 Edge 收藏夹下拉顶部目录名）
+  items.push({ label: `${node.name}（${node.count}）`, header: true });
   // 子文件夹在前（Edge 风格）
   const subs = [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name));
   for (const sub of subs) {
     items.push({
-      label: `📁 ${sub.name}`,
-      key: `${sub.count} ›`,
+      label: sub.name,
+      kind: 'folder',
+      key: `${sub.count}`,
       run: () => openBmFolderPop(sub, window.__bmAnchor, depth + 1),
     });
   }
   if (subs.length) items.push({ sep: true });
-  // 本目录书签
-  for (const b of node.bookmarks) {
+  // 本目录书签：按标题去重（镜像站点标题相同只留第一个）
+  const seen = new Set();
+  const uniq = node.bookmarks.filter((b) => {
+    const k = (b.title || hostOf(b.url)).trim();
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+  for (const b of uniq) {
+    const title = b.title || hostOf(b.url);
     items.push({
-      label: b.title || hostOf(b.url),
-      key: hostOf(b.url).split('.')[0],
+      label: title,
+      icon: (title.charAt(0) || '★').toUpperCase(),
+      kind: 'bookmark',
       run: () => openBmHere(b),
       bmUrl: b.url,
     });
@@ -717,11 +728,17 @@ function openCtxMenuAt(x, y, items, width = 196) {
       sep: !!it.sep,
       disabled: !!it.disabled,
       action: key,
+      icon: it.icon || '',
+      kind: it.kind || '',
+      header: !!it.header,
     });
   }
   let px = Math.min(x, window.innerWidth - width - 10);
   let py = y;
-  const approx = items.filter(i => !i.sep).length * 36 + items.filter(i => i.sep).length * 9 + 20;
+  const bmMode = items.some(i => i.header || i.kind);
+  const rowH = bmMode ? 32 : 36;
+  let approx = items.filter(i => !i.sep && !i.header).length * rowH + items.filter(i => i.sep).length * 9 + (bmMode ? 30 : 0) + 20;
+  if (bmMode) approx = Math.min(approx, 524);  // 与后端 520 上限对齐
   if (py + approx > window.innerHeight - 8) py = Math.max(4, py - approx);
   invoke('open_ctxmenu', { x: Math.max(0, Math.round(px)), y: Math.round(py), width, items: payload })
     .catch((err) => reportError(`open_ctxmenu FAILED: ${String(err)}`));

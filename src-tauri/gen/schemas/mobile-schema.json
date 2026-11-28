@@ -291,6 +291,18 @@
           "markdownDescription": "Enables the delete_folder command without any pre-configured scope."
         },
         {
+          "description": "Enables the download_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-download-cancel",
+          "markdownDescription": "Enables the download_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the download_retry command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-download-retry",
+          "markdownDescription": "Enables the download_retry command without any pre-configured scope."
+        },
+        {
           "description": "Enables the duplicate_tab command without any pre-configured scope.",
           "type": "string",
           "const": "allow-duplicate-tab",
@@ -313,6 +325,12 @@
           "type": "string",
           "const": "allow-exit-split",
           "markdownDescription": "Enables the exit_split command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the export_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-export-backup",
+          "markdownDescription": "Enables the export_backup command without any pre-configured scope."
         },
         {
           "description": "Enables the find_in_page command without any pre-configured scope.",
@@ -367,6 +385,12 @@
           "type": "string",
           "const": "allow-get-version",
           "markdownDescription": "Enables the get_version command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the import_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-backup",
+          "markdownDescription": "Enables the import_backup command without any pre-configured scope."
         },
         {
           "description": "Enables the import_bookmarks command without any pre-configured scope.",
@@ -651,6 +675,12 @@
           "markdownDescription": "Enables the remove_bookmarks_batch command without any pre-configured scope."
         },
         {
+          "description": "Enables the remove_history_entry command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-remove-history-entry",
+          "markdownDescription": "Enables the remove_history_entry command without any pre-configured scope."
+        },
+        {
           "description": "Enables the rename_folder command without any pre-configured scope.",
           "type": "string",
           "const": "allow-rename-folder",
@@ -661,6 +691,12 @@
           "type": "string",
           "const": "allow-rename-workspace",
           "markdownDescription": "Enables the rename_workspace command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the reopen_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-reopen-tab",
+          "markdownDescription": "Enables the reopen_tab command without any pre-configured scope."
         },
         {
           "description": "Enables the reset_settings command without any pre-configured scope.",
@@ -775,6 +811,12 @@
           "type": "string",
           "const": "allow-toggle-vertical-tabs",
           "markdownDescription": "Enables the toggle_vertical_tabs command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the translate_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-translate-text",
+          "markdownDescription": "Enables the translate_text command without any pre-configured scope."
         },
         {
           "description": "Enables the ui_action command without any pre-configured scope.",
@@ -933,6 +975,18 @@
           "markdownDescription": "Denies the delete_folder command without any pre-configured scope."
         },
         {
+          "description": "Denies the download_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-download-cancel",
+          "markdownDescription": "Denies the download_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the download_retry command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-download-retry",
+          "markdownDescription": "Denies the download_retry command without any pre-configured scope."
+        },
+        {
           "description": "Denies the duplicate_tab command without any pre-configured scope.",
           "type": "string",
           "const": "deny-duplicate-tab",
@@ -955,6 +1009,12 @@
           "type": "string",
           "const": "deny-exit-split",
           "markdownDescription": "Denies the exit_split command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the export_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-export-backup",
+          "markdownDescription": "Denies the export_backup command without any pre-configured scope."
         },
         {
           "description": "Denies the find_in_page command without any pre-configured scope.",
@@ -1009,6 +1069,12 @@
           "type": "string",
           "const": "deny-get-version",
           "markdownDescription": "Denies the get_version command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_backup command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-backup",
+          "markdownDescription": "Denies the import_backup command without any pre-configured scope."
         },
         {
           "description": "Denies the import_bookmarks command without any pre-configured scope.",
@@ -1293,6 +1359,12 @@
           "markdownDescription": "Denies the remove_bookmarks_batch command without any pre-configured scope."
         },
         {
+          "description": "Denies the remove_history_entry command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-remove-history-entry",
+          "markdownDescription": "Denies the remove_history_entry command without any pre-configured scope."
+        },
+        {
           "description": "Denies the rename_folder command without any pre-configured scope.",
           "type": "string",
           "const": "deny-rename-folder",
@@ -1303,6 +1375,12 @@
           "type": "string",
           "const": "deny-rename-workspace",
           "markdownDescription": "Denies the rename_workspace command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the reopen_tab command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-reopen-tab",
+          "markdownDescription": "Denies the reopen_tab command without any pre-configured scope."
         },
         {
           "description": "Denies the reset_settings command without any pre-configured scope.",
@@ -1417,6 +1495,12 @@
           "type": "string",
           "const": "deny-toggle-vertical-tabs",
           "markdownDescription": "Denies the toggle_vertical_tabs command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the translate_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-translate-text",
+          "markdownDescription": "Denies the translate_text command without any pre-configured scope."
         },
         {
           "description": "Denies the ui_action command without any pre-configured scope.",

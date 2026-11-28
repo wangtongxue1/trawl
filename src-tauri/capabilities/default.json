@@ -16,7 +16,6 @@
     "core:default",
     "core:window:allow-start-dragging",
     "core:window:allow-internal-toggle-maximize",
-    "dialog:allow-open",
     "allow-create-folder",
     "allow-move-tab",
     "allow-move-tab-to-folder",
